@@ -591,7 +591,11 @@ export default function App() {
       <header className="sticky top-0 z-20 backdrop-blur bg-white/60 border-b border-black/5">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-sky-400 to-indigo-500 shadow" />
+            <img
+  src="/logo.png"
+  alt="LëtzView logo"
+  className="w-12 h-12 rounded-2xl object-contain"
+/>
             <div>
               <div className="text-xl font-bold tracking-tight">{t.appName}</div>
               <div className="text-xs text-zinc-600">{t.familyTagline}</div>
