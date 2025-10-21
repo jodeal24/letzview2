@@ -25,14 +25,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 /**
- * LëtzView — Netflix/Disney-like front end:
+ * LëtzView — Netflix/Disney-like front end
  * - Series → Seasons → Episodes
  * - Language switcher
  * - Player with subtitles + multi-audio (external <audio> sync)
  * - Admin-only upload (localStorage for demo)
  */
 
-// ------------------------- Simple i18n -------------------------
+// ------------------------- i18n -------------------------
 const MESSAGES = {
   en: {
     appName: "LëtzView",
@@ -261,12 +261,11 @@ const MESSAGES = {
   },
 };
 
-// ------------------------- Demo storage -------------------------
-const STORAGE_KEY = "letzview_db_v1"; // ASCII-safe key
+// ------------------------- storage -------------------------
+const STORAGE_KEY = "letzview_db_v1";
 
 function loadDB() {
   try {
-    // migrate from old key once if present
     const old = localStorage.getItem("streamjoy_db_v1");
     if (old && !localStorage.getItem(STORAGE_KEY)) {
       localStorage.setItem(STORAGE_KEY, old);
@@ -281,13 +280,13 @@ function saveDB(db) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
 }
 
-// ------------------------- Safe ID helper -------------------------
+// ------------------------- helpers -------------------------
 const uid = () =>
   (typeof crypto !== "undefined" && crypto.randomUUID
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
 
-// ------------------------- UI Helpers -------------------------
+// ------------------------- UI bits -------------------------
 const Section = ({ title, children, icon: Icon }) => (
   <section className="mt-8">
     <div className="flex items-center gap-2 mb-3">
@@ -423,7 +422,7 @@ function HeroCarousel({ items = [], onClickItem }) {
   );
 }
 
-// ------------------------- Player with multi-audio & subs -------------------------
+// ------------------------- Player -------------------------
 function Player({ episode, t, onClose }) {
   const videoRef = useRef(null);
   const audioRef = useRef(null);
@@ -616,7 +615,6 @@ function SeasonForm({ t, db, onSubmit, onOpenSeries }) {
   const [seriesId, setSeriesId] = useState("");
   const [number, setNumber] = useState(1);
 
-  // suggest next season number when a series is chosen
   useEffect(() => {
     const s = db.series.find((x) => x.id === seriesId);
     if (!s) return;
@@ -677,7 +675,7 @@ function EpisodeForm({ t, db, onSubmit, openSeries }) {
   const [seriesId, setSeriesId] = useState("");
   const [seasonId, setSeasonId] = useState("");
   const [title, setTitle] = useState("");
-  the const [number, setNumber] = useState(1);
+  const [number, setNumber] = useState(1);
   const [description, setDescription] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
 
@@ -691,7 +689,6 @@ function EpisodeForm({ t, db, onSubmit, openSeries }) {
   const series = db.series;
   const seasons = series.find((s) => s.id === seriesId)?.seasons || [];
 
-  // Human label for currently selected season
   const currentSeason = seasons.find((se) => se.id === seasonId);
   const seasonLabel = currentSeason ? `${t.season} ${currentSeason.number}` : "";
 
@@ -834,7 +831,6 @@ export default function App() {
   const [selectedSeries, setSelectedSeries] = useState(null);
   const [selectedEpisode, setSelectedEpisode] = useState(null);
 
-  // Keep the open drawer in sync with latest DB (so new seasons appear immediately)
   useEffect(() => {
     if (!selectedSeries) return;
     const latest = db.series.find((s) => s.id === selectedSeries.id);
@@ -859,7 +855,6 @@ export default function App() {
     localStorage.removeItem("sj_admin");
   };
 
-  // -------- Delete helpers (ADMIN ONLY) --------
   const deleteSeries = (seriesId) => {
     if (!admin) return;
     if (!confirm(t.confirmDeleteSeries)) return;
@@ -884,7 +879,6 @@ export default function App() {
     if (selectedSeries?.id === seriesId) setSelectedSeries({ ...s });
   };
 
-  // -------- Add Season inline in Series Drawer --------
   const addSeasonInline = (seriesId) => {
     if (!admin) return;
     const next = { ...db };
