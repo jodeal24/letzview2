@@ -1,6 +1,23 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Search, Play, Globe, LogIn, LogOut, UploadCloud, Plus, Video, Film, Captions, Headphones, Settings, X, ChevronRight, ChevronLeft } from "lucide-react";
+import {
+  Search,
+  Play,
+  Globe,
+  LogIn,
+  LogOut,
+  UploadCloud,
+  Plus,
+  Video,
+  Film,
+  Captions,
+  Headphones,
+  Settings,
+  X,
+  ChevronRight,
+  ChevronLeft,
+  Trash,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -8,17 +25,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 /**
- * LëtzView — a Netflix/Disney-like front end with:
- * - Series → Seasons → Episodes library
- * - Language switcher (top-right)
- * - Player with subtitle & multi-audio selection (external audio track sync)
- * - Admin-only upload (no user logins). Uses localStorage for demo persistence.
- *
- * To try quickly:
- * - Click Admin (top bar) → login with password: admin
- * - Create a Series, Season, Episode, and paste URLs for video/mp4, optional
- *   external .vtt subtitles and separate audio tracks (mp3/m4a). Save.
- * - Browse and play. Switch audio & subtitles in the player controls.
+ * LëtzView — Netflix/Disney-like front end:
+ * - Series → Seasons → Episodes
+ * - Language switcher
+ * - Player with subtitles + multi-audio (external <audio> sync)
+ * - Admin-only upload (localStorage for demo)
  */
 
 // ------------------------- Simple i18n -------------------------
@@ -60,6 +71,11 @@ const MESSAGES = {
     wrongPassword: "Wrong password",
     familyTagline: "Family-friendly streaming, simple and elegant",
     libraryEmpty: "Your library is empty. Add a series from Admin → Add Series.",
+    deleteSeries: "Delete series",
+    deleteEpisode: "Delete episode",
+    confirmDeleteSeries: "Delete this series and all its seasons/episodes?",
+    confirmDeleteEpisode: "Delete this episode?",
+    editSeries: "Edit series",
   },
   pt: {
     appName: "LëtzView",
@@ -98,6 +114,11 @@ const MESSAGES = {
     wrongPassword: "Palavra-passe incorreta",
     familyTagline: "Streaming para a família — simples e elegante",
     libraryEmpty: "A sua biblioteca está vazia. Adicione uma série em Admin → Adicionar Série.",
+    deleteSeries: "Apagar série",
+    deleteEpisode: "Apagar episódio",
+    confirmDeleteSeries: "Apagar esta série e todas as temporadas/episódios?",
+    confirmDeleteEpisode: "Apagar este episódio?",
+    editSeries: "Editar série",
   },
   fr: {
     appName: "LëtzView",
@@ -136,6 +157,11 @@ const MESSAGES = {
     wrongPassword: "Mauvais mot de passe",
     familyTagline: "Streaming familial — simple et esthétique",
     libraryEmpty: "Votre bibliothèque est vide. Ajoutez une série via Admin → Ajouter une série.",
+    deleteSeries: "Supprimer la série",
+    deleteEpisode: "Supprimer l’épisode",
+    confirmDeleteSeries: "Supprimer cette série et toutes ses saisons/épisodes ?",
+    confirmDeleteEpisode: "Supprimer cet épisode ?",
+    editSeries: "Modifier la série",
   },
   de: {
     appName: "LëtzView",
@@ -174,6 +200,11 @@ const MESSAGES = {
     wrongPassword: "Falsches Passwort",
     familyTagline: "Familienfreundliches Streaming — schlicht & schön",
     libraryEmpty: "Ihre Bibliothek ist leer. Fügen Sie eine Serie über Admin → Serie hinzufügen hinzu.",
+    deleteSeries: "Serie löschen",
+    deleteEpisode: "Episode löschen",
+    confirmDeleteSeries: "Diese Serie mit allen Staffeln/Episoden löschen?",
+    confirmDeleteEpisode: "Diese Episode löschen?",
+    editSeries: "Serie bearbeiten",
   },
   lb: {
     appName: "LëtzView",
@@ -212,11 +243,16 @@ const MESSAGES = {
     wrongPassword: "Falscht Passwuert",
     familyTagline: "Familljefrëndlecht Streaming — einfach & ästhetesch",
     libraryEmpty: "Deng Bibliothéik ass eidel. Setz eng Serie derbäi iwwer Admin → Serie derbäisetzen.",
+    deleteSeries: "Serie läschen",
+    deleteEpisode: "Episod läschen",
+    confirmDeleteSeries: "Dës Serie mat alle Staffelen/Episoden läschen?",
+    confirmDeleteEpisode: "Dës Episod läschen?",
+    editSeries: "Serie änneren",
   },
 };
 
 // ------------------------- Demo storage -------------------------
-const STORAGE_KEY = "letzview_db_v1"; // ASCII key (safer across environments)
+const STORAGE_KEY = "letzview_db_v1"; // ASCII-safe key
 
 function loadDB() {
   try {
@@ -224,7 +260,6 @@ function loadDB() {
     const old = localStorage.getItem("streamjoy_db_v1");
     if (old && !localStorage.getItem(STORAGE_KEY)) {
       localStorage.setItem(STORAGE_KEY, old);
-      // optional: localStorage.removeItem("streamjoy_db_v1");
     }
     const raw = localStorage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : { series: [] };
@@ -235,11 +270,6 @@ function loadDB() {
 function saveDB(db) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
 }
-
-// Data shapes
-// Series: { id, title, description, posterUrl, backdropUrl, seasons: [Season] }
-// Season: { id, number, episodes: [Episode] }
-// Episode: { id, title, number, description, videoUrl, audios:[{label,url}], subtitles:[{lang,url}] }
 
 // ------------------------- UI Helpers -------------------------
 const Section = ({ title, children, icon: Icon }) => (
@@ -292,7 +322,7 @@ const Row = ({ title, items, onItem }) => {
 function Player({ episode, t, onClose }) {
   const videoRef = useRef(null);
   const audioRef = useRef(null);
-  const [audioSelection, setAudioSelection] = useState("video"); // "video" or index into episode.audios
+  const [audioSelection, setAudioSelection] = useState("video"); // "video" or index
   const [subSelection, setSubSelection] = useState("off"); // lang or "off"
 
   // Keep audio element synced to video when using external audio track
@@ -302,30 +332,20 @@ function Player({ episode, t, onClose }) {
     if (!v || !a) return;
 
     const sync = () => {
-      if (Math.abs(a.currentTime - v.currentTime) > 0.3) {
-        a.currentTime = v.currentTime;
-      }
+      if (Math.abs(a.currentTime - v.currentTime) > 0.3) a.currentTime = v.currentTime;
       if (v.paused && !a.paused) a.pause();
       if (!v.paused && a.paused) a.play().catch(() => {});
     };
 
-    const onPlay = () => {
-      if (audioSelection !== "video") a.play().catch(() => {});
-    };
-    const onPause = () => {
-      if (audioSelection !== "video") a.pause();
-    };
-    const onSeek = () => {
-      if (audioSelection !== "video") a.currentTime = v.currentTime;
-    };
+    const onPlay = () => { if (audioSelection !== "video") a.play().catch(() => {}); };
+    const onPause = () => { if (audioSelection !== "video") a.pause(); };
+    const onSeek = () => { if (audioSelection !== "video") a.currentTime = v.currentTime; };
 
     const int = setInterval(sync, 500);
     v.addEventListener("play", onPlay);
     v.addEventListener("pause", onPause);
     v.addEventListener("seeking", onSeek);
-    v.addEventListener("ratechange", () => {
-      if (audioSelection !== "video") a.playbackRate = v.playbackRate;
-    });
+    v.addEventListener("ratechange", () => { if (audioSelection !== "video") a.playbackRate = v.playbackRate; });
 
     return () => {
       clearInterval(int);
@@ -690,6 +710,31 @@ export default function App() {
     localStorage.removeItem("sj_admin");
   };
 
+  // -------- Delete helpers (ADMIN ONLY) --------
+  const deleteSeries = (seriesId) => {
+    if (!admin) return;
+    if (!confirm(t.confirmDeleteSeries)) return;
+    const next = { ...db, series: db.series.filter((s) => s.id !== seriesId) };
+    setDB(next);
+    saveDB(next);
+    if (selectedSeries?.id === seriesId) setSelectedSeries(null);
+    if (selectedEpisode) setSelectedEpisode(null);
+  };
+
+  const deleteEpisode = (seriesId, seasonId, episodeId) => {
+    if (!admin) return;
+    if (!confirm(t.confirmDeleteEpisode)) return;
+    const next = { ...db };
+    const s = next.series.find((x) => x.id === seriesId);
+    const se = s?.seasons.find((x) => x.id === seasonId);
+    if (!se) return;
+    se.episodes = se.episodes.filter((ep) => ep.id !== episodeId);
+    setDB(next);
+    saveDB(next);
+    if (selectedEpisode?.id === episodeId) setSelectedEpisode(null);
+    if (selectedSeries?.id === seriesId) setSelectedSeries({ ...s }); // refresh drawer view
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-50 via-white to-rose-50 text-zinc-900">
       {/* Header */}
@@ -780,20 +825,16 @@ export default function App() {
         {/* Rows */}
         <Row title={t.series} items={filteredSeries} onItem={setSelectedSeries} />
 
-        {/* Edit Series Dialog (lives in App because state is here) */}
+        {/* Edit Series Dialog */}
         {editingSeries && (
           <Dialog open onOpenChange={(open) => { if (!open) setEditingSeries(null); }}>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
-                <DialogTitle>Edit Series</DialogTitle>
+                <DialogTitle>{t.editSeries}</DialogTitle>
               </DialogHeader>
 
               <div className="grid gap-3 p-4 rounded-2xl bg-white/5">
-                <Input
-                  placeholder={t.title}
-                  defaultValue={editingSeries.title}
-                  onChange={(e) => (editingSeries.title = e.target.value)}
-                />
+                <Input placeholder={t.title} defaultValue={editingSeries.title} onChange={(e) => (editingSeries.title = e.target.value)} />
                 <Input
                   placeholder={t.description}
                   defaultValue={editingSeries.description}
@@ -889,9 +930,19 @@ export default function App() {
                     <h3 className="text-2xl font-bold mb-1">{selectedSeries.title}</h3>
 
                     {admin && (
-                      <Button variant="outline" className="mt-2" onClick={() => setEditingSeries(selectedSeries)}>
-                        Edit series
-                      </Button>
+                      <div className="mt-2 flex gap-2">
+                        <Button variant="outline" onClick={() => setEditingSeries(selectedSeries)}>
+                          {t.editSeries}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="border-red-200 text-red-600 hover:bg-red-50"
+                          onClick={() => deleteSeries(selectedSeries.id)}
+                        >
+                          <Trash className="w-4 h-4 mr-2" />
+                          {t.deleteSeries}
+                        </Button>
+                      </div>
                     )}
 
                     {selectedSeries.description && <p className="text-zinc-700 mb-3">{selectedSeries.description}</p>}
@@ -903,7 +954,11 @@ export default function App() {
                           </div>
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                             {season.episodes?.sort((a, b) => a.number - b.number).map((ep) => (
-                              <Card key={ep.id} className="bg-white/60 hover:bg-white/80 transition cursor-pointer" onClick={() => setSelectedEpisode(ep)}>
+                              <Card
+                                key={ep.id}
+                                className="bg-white/60 hover:bg-white/80 transition cursor-pointer"
+                                onClick={() => setSelectedEpisode(ep)}
+                              >
                                 <CardContent className="p-4">
                                   <div className="flex items-start gap-3">
                                     <div className="w-16 h-10 rounded bg-gradient-to-br from-indigo-200 to-sky-200" />
@@ -913,9 +968,34 @@ export default function App() {
                                       </div>
                                       {ep.description && <div className="text-sm text-zinc-600 line-clamp-2">{ep.description}</div>}
                                     </div>
-                                    <Button size="icon" variant="ghost">
-                                      <Play />
-                                    </Button>
+
+                                    <div className="flex items-center gap-1">
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedEpisode(ep);
+                                        }}
+                                        title={t.play}
+                                      >
+                                        <Play />
+                                      </Button>
+                                      {admin && (
+                                        <Button
+                                          size="icon"
+                                          variant="outline"
+                                          className="border-red-200 text-red-600 hover:bg-red-50"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            deleteEpisode(selectedSeries.id, season.id, ep.id);
+                                          }}
+                                          title={t.deleteEpisode}
+                                        >
+                                          <Trash />
+                                        </Button>
+                                      )}
+                                    </div>
                                   </div>
                                 </CardContent>
                               </Card>
