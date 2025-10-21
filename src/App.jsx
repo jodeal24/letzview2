@@ -29,7 +29,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
  * - Series → Seasons → Episodes
  * - Language switcher
  * - Player with subtitles + multi-audio (external <audio> sync)
- * - Admin-only upload (localStorage for demo)
+ * - Admin-only upload (localStorage used as offline fallback; shared data via Vercel KV)
  */
 
 // ------------------------- i18n -------------------------
@@ -78,51 +78,6 @@ const MESSAGES = {
     editSeries: "Edit series",
     addSeasonHere: "Add Season (here)",
     seasonAdded: (n) => `Season ${n} added.`,
-  },
-  pt: {
-    appName: "LëtzView",
-    search: "Pesquisar",
-    series: "Séries",
-    seasons: "Temporadas",
-    season: "Temporada",
-    episodes: "Episódios",
-    play: "Reproduzir",
-    audio: "Áudio",
-    subtitles: "Legendas",
-    off: "Desligado",
-    admin: "Admin",
-    login: "Entrar",
-    logout: "Sair",
-    adminOnly: "Somente administrador",
-    addSeries: "Adicionar Série",
-    addSeason: "Adicionar Temporada",
-    addEpisode: "Adicionar Episódio",
-    title: "Título",
-    description: "Descrição",
-    posterUrl: "URL do poster",
-    backdropUrl: "URL do backdrop (opcional)",
-    videoUrl: "URL do vídeo (.mp4 / .m3u8)",
-    subtitleUrl: "Legendas (.vtt)",
-    subtitleLang: "Código do idioma da legenda",
-    audioLabel: "Rótulo do áudio (ex.: Português)",
-    audioUrl: "URL do áudio (mp3/m4a)",
-    language: "Idioma",
-    interfaceLanguage: "Idioma da interface",
-    chooseLanguage: "Escolher idioma",
-    confirm: "Confirmar",
-    cancel: "Cancelar",
-    save: "Guardar",
-    password: "Palavra-passe",
-    wrongPassword: "Palavra-passe incorreta",
-    familyTagline: "Streaming para a família — simples e elegante",
-    libraryEmpty: "A sua biblioteca está vazia. Adicione uma série em Admin → Adicionar Série.",
-    deleteSeries: "Apagar série",
-    deleteEpisode: "Apagar episódio",
-    confirmDeleteSeries: "Apagar esta série e todas as temporadas/episódios?",
-    confirmDeleteEpisode: "Apagar este episódio?",
-    editSeries: "Editar série",
-    addSeasonHere: "Adicionar Temporada (aqui)",
-    seasonAdded: (n) => `Temporada ${n} adicionada.`,
   },
   fr: {
     appName: "LëtzView",
@@ -261,23 +216,32 @@ const MESSAGES = {
   },
 };
 
-// ------------------------- storage -------------------------
+// ------------------------- shared storage (KV via /api/db) -------------------------
 const STORAGE_KEY = "letzview_db_v1";
 
-function loadDB() {
+async function loadDB() {
   try {
-    const old = localStorage.getItem("streamjoy_db_v1");
-    if (old && !localStorage.getItem(STORAGE_KEY)) {
-      localStorage.setItem(STORAGE_KEY, old);
-    }
+    const r = await fetch("/api/db", { cache: "no-store" });
+    if (r.ok) return await r.json();
+  } catch (_) {}
+  // offline/local fallback
+  try {
     const raw = localStorage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : { series: [] };
   } catch {
     return { series: [] };
   }
 }
-function saveDB(db) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+
+async function saveDBRemote(db, password = "admin") {
+  await fetch("/api/db", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password, data: db }),
+  });
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
+  } catch {}
 }
 
 // ------------------------- helpers -------------------------
@@ -546,7 +510,7 @@ function AdminPanel({ db, setDB, t }) {
   const addSeries = (s) => {
     const next = { ...db, series: [...db.series, { ...s, id: uid(), seasons: [] }] };
     setDB(next);
-    saveDB(next);
+    saveDBRemote(next).catch(console.error);
   };
   const addSeason = (seriesId, number) => {
     const next = { ...db };
@@ -554,7 +518,7 @@ function AdminPanel({ db, setDB, t }) {
     if (!s) return;
     s.seasons.push({ id: uid(), number, episodes: [] });
     setDB(next);
-    saveDB(next);
+    saveDBRemote(next).catch(console.error);
   };
   const addEpisode = (seriesId, seasonId, ep) => {
     const next = { ...db };
@@ -563,7 +527,7 @@ function AdminPanel({ db, setDB, t }) {
     if (!se) return;
     se.episodes.push({ id: uid(), ...ep });
     setDB(next);
-    saveDB(next);
+    saveDBRemote(next).catch(console.error);
   };
 
   return (
@@ -823,7 +787,7 @@ export default function App() {
     document.title = t.appName || "LëtzView";
   }, [lang, t.appName]);
 
-  const [db, setDB] = useState(loadDB);
+  const [db, setDB] = useState({ series: [] });
   const [query, setQuery] = useState("");
   const [admin, setAdmin] = useState(() => localStorage.getItem("sj_admin") === "1");
   const [editingSeries, setEditingSeries] = useState(null);
@@ -832,10 +796,15 @@ export default function App() {
   const [selectedEpisode, setSelectedEpisode] = useState(null);
 
   useEffect(() => {
+    loadDB().then(setDB).catch(console.error);
+  }, []);
+
+  // keep drawer in sync with latest db
+  useEffect(() => {
     if (!selectedSeries) return;
     const latest = db.series.find((s) => s.id === selectedSeries.id);
     if (latest) setSelectedSeries(latest);
-  }, [db]);
+  }, [db, selectedSeries]);
 
   const filteredSeries = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -860,7 +829,7 @@ export default function App() {
     if (!confirm(t.confirmDeleteSeries)) return;
     const next = { ...db, series: db.series.filter((s) => s.id !== seriesId) };
     setDB(next);
-    saveDB(next);
+    saveDBRemote(next).catch(console.error);
     if (selectedSeries?.id === seriesId) setSelectedSeries(null);
     if (selectedEpisode) setSelectedEpisode(null);
   };
@@ -874,7 +843,7 @@ export default function App() {
     if (!se) return;
     se.episodes = se.episodes.filter((ep) => ep.id !== episodeId);
     setDB(next);
-    saveDB(next);
+    saveDBRemote(next).catch(console.error);
     if (selectedEpisode?.id === episodeId) setSelectedEpisode(null);
     if (selectedSeries?.id === seriesId) setSelectedSeries({ ...s });
   };
@@ -889,7 +858,7 @@ export default function App() {
     if (!s.seasons) s.seasons = [];
     s.seasons.push({ id: uid(), number: newNumber, episodes: [] });
     setDB(next);
-    saveDB(next);
+    saveDBRemote(next).catch(console.error);
     if (selectedSeries?.id === seriesId) setSelectedSeries({ ...s });
     try { alert(MESSAGES[lang].seasonAdded(newNumber)); } catch {}
   };
@@ -924,7 +893,6 @@ export default function App() {
             </SelectTrigger>
             <SelectContent className="bg-white border-black/10">
               <SelectItem value="en">EN</SelectItem>
-              <SelectItem value="pt">PT</SelectItem>
               <SelectItem value="fr">FR</SelectItem>
               <SelectItem value="de">DE</SelectItem>
               <SelectItem value="lb">LB</SelectItem>
@@ -968,7 +936,7 @@ export default function App() {
                       onSubmit={(s) => {
                         const next = { ...db, series: [...db.series, { ...s, id: uid(), seasons: [] }] };
                         setDB(next);
-                        saveDB(next);
+                        saveDBRemote(next).catch(console.error);
                       }}
                     />
                   </DialogContent>
@@ -1018,7 +986,7 @@ export default function App() {
                       if (idx !== -1) {
                         next.series[idx] = { ...next.series[idx], ...editingSeries };
                         setDB(next);
-                        saveDB(next);
+                        saveDBRemote(next).catch(console.error);
                       }
                       setEditingSeries(null);
                     }}
@@ -1045,7 +1013,7 @@ export default function App() {
               db={db}
               setDB={(next) => {
                 setDB(next);
-                saveDB(next);
+                saveDBRemote(next).catch(console.error);
               }}
               t={t}
             />
