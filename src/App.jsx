@@ -76,6 +76,8 @@ const MESSAGES = {
     confirmDeleteSeries: "Delete this series and all its seasons/episodes?",
     confirmDeleteEpisode: "Delete this episode?",
     editSeries: "Edit series",
+    addSeasonHere: "Add Season (here)",
+    seasonAdded: n => `Season ${n} added.`,
   },
   pt: {
     appName: "LëtzView",
@@ -119,6 +121,8 @@ const MESSAGES = {
     confirmDeleteSeries: "Apagar esta série e todas as temporadas/episódios?",
     confirmDeleteEpisode: "Apagar este episódio?",
     editSeries: "Editar série",
+    addSeasonHere: "Adicionar Temporada (aqui)",
+    seasonAdded: n => `Temporada ${n} adicionada.`,
   },
   fr: {
     appName: "LëtzView",
@@ -162,6 +166,8 @@ const MESSAGES = {
     confirmDeleteSeries: "Supprimer cette série et toutes ses saisons/épisodes ?",
     confirmDeleteEpisode: "Supprimer cet épisode ?",
     editSeries: "Modifier la série",
+    addSeasonHere: "Ajouter une saison (ici)",
+    seasonAdded: n => `Saison ${n} ajoutée.`,
   },
   de: {
     appName: "LëtzView",
@@ -205,6 +211,8 @@ const MESSAGES = {
     confirmDeleteSeries: "Diese Serie mit allen Staffeln/Episoden löschen?",
     confirmDeleteEpisode: "Diese Episode löschen?",
     editSeries: "Serie bearbeiten",
+    addSeasonHere: "Staffel hinzufügen (hier)",
+    seasonAdded: n => `Staffel ${n} hinzugefügt.`,
   },
   lb: {
     appName: "LëtzView",
@@ -248,6 +256,8 @@ const MESSAGES = {
     confirmDeleteSeries: "Dës Serie mat alle Staffelen/Episoden läschen?",
     confirmDeleteEpisode: "Dës Episod läschen?",
     editSeries: "Serie änneren",
+    addSeasonHere: "Staffel derbäisetzen (hei)",
+    seasonAdded: n => `Staffel ${n} derbäigesat.`,
   },
 };
 
@@ -547,7 +557,7 @@ function SeasonForm({ t, db, onSubmit, onOpenSeries }) {
         disabled={!seriesId}
         onClick={() => {
           if (!seriesId) return;
-          onSubmit(seriesId, number);
+          onSubmit(seriesId, Number.isFinite(number) ? number : 1);
         }}
       >
         <Plus className="w-4 h-4 mr-2" /> {t.addSeason}
@@ -749,6 +759,23 @@ export default function App() {
     if (selectedSeries?.id === seriesId) setSelectedSeries({ ...s }); // refresh drawer view
   };
 
+  // -------- Add Season inline in the Series Drawer (ADMIN ONLY) --------
+  const addSeasonInline = (seriesId) => {
+    if (!admin) return;
+    const next = { ...db };
+    const s = next.series.find((x) => x.id === seriesId);
+    if (!s) return;
+    const max = s.seasons?.length ? Math.max(...s.seasons.map((se) => Number(se.number) || 0)) : 0;
+    const newNumber = max + 1;
+    if (!s.seasons) s.seasons = [];
+    s.seasons.push({ id: uid(), number: newNumber, episodes: [] });
+    setDB(next);
+    saveDB(next);
+    if (selectedSeries?.id === seriesId) setSelectedSeries({ ...s });
+    // Friendly confirmation (non-blocking if browsers disable alerts)
+    try { alert(MESSAGES[lang].seasonAdded(newNumber)); } catch {}
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-50 via-white to-rose-50 text-zinc-900">
       {/* Header */}
@@ -944,7 +971,7 @@ export default function App() {
                     <h3 className="text-2xl font-bold mb-1">{selectedSeries.title}</h3>
 
                     {admin && (
-                      <div className="mt-2 flex gap-2">
+                      <div className="mt-2 flex flex-wrap gap-2">
                         <Button variant="outline" onClick={() => setEditingSeries(selectedSeries)}>
                           {t.editSeries}
                         </Button>
@@ -955,6 +982,15 @@ export default function App() {
                         >
                           <Trash className="w-4 h-4 mr-2" />
                           {t.deleteSeries}
+                        </Button>
+                        {/* NEW: Add season inline here */}
+                        <Button
+                          variant="outline"
+                          className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
+                          onClick={() => addSeasonInline(selectedSeries.id)}
+                        >
+                          <Plus className="w-4 h-4 mr-2" />
+                          {t.addSeasonHere}
                         </Button>
                       </div>
                     )}
