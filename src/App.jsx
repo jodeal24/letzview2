@@ -274,7 +274,13 @@ const Row = ({ title, items, onItem }) => {
       </div>
       <div ref={scrollRef} className="flex gap-4 overflow-x-auto pb-2">
         {items.map(s => (
-          <PosterCard key={s.id} item={s} onClick={() => onItem(s)} />
+          <PosterCard
+  key={s.id}
+  item={s}
+  onClick={() => onItem(s)}
+  onEdit={() => setEditingSeries(s)}
+/>
+
         ))}
       </div>
     </div>
@@ -399,6 +405,25 @@ function Player({ episode, t, onClose }) {
 function AdminPanel({ db, setDB, t }) {
   const [openSeries, setOpenSeries] = useState(null);
 
+  {editingSeries && (
+  <Dialog open onOpenChange={() => setEditingSeries(null)}>
+    <DialogContent className="max-w-2xl">
+      <DialogHeader><DialogTitle>Edit Series</DialogTitle></DialogHeader>
+      <SeriesForm
+        t={t}
+        onSubmit={(s) => {
+          const next = { ...db };
+          const idx = next.series.findIndex(x => x.id === editingSeries.id);
+          next.series[idx] = { ...next.series[idx], ...s };
+          setDB(next);
+          saveDB(next);
+          setEditingSeries(null);
+        }}
+      />
+    </DialogContent>
+  </Dialog>
+)}
+  
   const addSeries = (s) => {
     const next = { ...db, series: [...db.series, { ...s, id: crypto.randomUUID(), seasons: [] }] };
     setDB(next);
@@ -568,7 +593,8 @@ export default function App() {
   const [db, setDB] = useState(loadDB);
   const [query, setQuery] = useState("");
   const [admin, setAdmin] = useState(() => localStorage.getItem("sj_admin") === "1");
-
+  const [editingSeries, setEditingSeries] = useState(null);
+  
   const [selectedSeries, setSelectedSeries] = useState(null);
   const [selectedEpisode, setSelectedEpisode] = useState(null);
 
