@@ -77,7 +77,7 @@ const MESSAGES = {
     confirmDeleteEpisode: "Delete this episode?",
     editSeries: "Edit series",
     addSeasonHere: "Add Season (here)",
-    seasonAdded: n => `Season ${n} added.`,
+    seasonAdded: (n) => `Season ${n} added.`,
   },
   pt: {
     appName: "LëtzView",
@@ -122,7 +122,7 @@ const MESSAGES = {
     confirmDeleteEpisode: "Apagar este episódio?",
     editSeries: "Editar série",
     addSeasonHere: "Adicionar Temporada (aqui)",
-    seasonAdded: n => `Temporada ${n} adicionada.`,
+    seasonAdded: (n) => `Temporada ${n} adicionada.`,
   },
   fr: {
     appName: "LëtzView",
@@ -167,7 +167,7 @@ const MESSAGES = {
     confirmDeleteEpisode: "Supprimer cet épisode ?",
     editSeries: "Modifier la série",
     addSeasonHere: "Ajouter une saison (ici)",
-    seasonAdded: n => `Saison ${n} ajoutée.`,
+    seasonAdded: (n) => `Saison ${n} ajoutée.`,
   },
   de: {
     appName: "LëtzView",
@@ -212,7 +212,7 @@ const MESSAGES = {
     confirmDeleteEpisode: "Diese Episode löschen?",
     editSeries: "Serie bearbeiten",
     addSeasonHere: "Staffel hinzufügen (hier)",
-    seasonAdded: n => `Staffel ${n} hinzugefügt.`,
+    seasonAdded: (n) => `Staffel ${n} hinzugefügt.`,
   },
   lb: {
     appName: "LëtzView",
@@ -257,7 +257,7 @@ const MESSAGES = {
     confirmDeleteEpisode: "Dës Episod läschen?",
     editSeries: "Serie änneren",
     addSeasonHere: "Staffel derbäisetzen (hei)",
-    seasonAdded: n => `Staffel ${n} derbäigesat.`,
+    seasonAdded: (n) => `Staffel ${n} derbäigesat.`,
   },
 };
 
@@ -282,7 +282,6 @@ function saveDB(db) {
 }
 
 // ------------------------- Safe ID helper -------------------------
-// Works even if crypto.randomUUID() is unavailable
 const uid = () =>
   (typeof crypto !== "undefined" && crypto.randomUUID
     ? crypto.randomUUID()
@@ -335,14 +334,102 @@ const Row = ({ title, items, onItem }) => {
   );
 };
 
+// ------------------------- Hero Carousel -------------------------
+function HeroCarousel({ items = [], onClickItem }) {
+  const [i, setI] = useState(0);
+
+  useEffect(() => {
+    if (!items?.length || items.length < 2) return;
+    const id = setInterval(() => setI((v) => (v + 1) % items.length), 4000);
+    return () => clearInterval(id);
+  }, [items.length]);
+
+  const go = (next) => {
+    if (!items?.length) return;
+    setI((v) => (v + next + items.length) % items.length);
+  };
+
+  const current = items[i];
+
+  return (
+    <div className="relative aspect-video rounded-2xl border border-black/5 overflow-hidden bg-white/40">
+      <motion.button
+        key={current?.id || "empty"}
+        onClick={() => current && onClickItem?.(current)}
+        className="w-full h-full"
+        initial={{ opacity: 0.3, scale: 1.02 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ type: "spring", stiffness: 120, damping: 20 }}
+        style={{
+          backgroundImage: current?.backdropUrl
+            ? `url(${current.backdropUrl})`
+            : current?.posterUrl
+            ? `url(${current.posterUrl})`
+            : "none",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+        aria-label={current?.title || "series"}
+      >
+        <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-black/10 to-transparent" />
+        <div className="absolute left-4 bottom-4 right-4 text-left">
+          <div className="inline-block px-2 py-1 rounded-md text-xs md:text-sm bg-black/40 text-white">
+            {items.length ? `${i + 1}/${items.length}` : "—"}
+          </div>
+          {current?.title && (
+            <div className="mt-2 text-white font-semibold text-lg md:text-2xl drop-shadow">
+              {current.title}
+            </div>
+          )}
+        </div>
+      </motion.button>
+
+      {items.length > 1 && (
+        <>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute left-2 top-1/2 -translate-y-1/2 bg-white/40 hover:bg-white/60"
+            onClick={() => go(-1)}
+            aria-label="Previous"
+          >
+            <ChevronLeft />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="absolute right-2 top-1/2 -translate-y-1/2 bg-white/40 hover:bg-white/60"
+            onClick={() => go(1)}
+            aria-label="Next"
+          >
+            <ChevronRight />
+          </Button>
+        </>
+      )}
+
+      {items.length > 1 && (
+        <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1.5">
+          {items.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => setI(idx)}
+              className={`h-1.5 rounded-full transition-all ${i === idx ? "w-6 bg-black/70" : "w-2 bg-black/30"}`}
+              aria-label={`Go to slide ${idx + 1}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ------------------------- Player with multi-audio & subs -------------------------
 function Player({ episode, t, onClose }) {
   const videoRef = useRef(null);
   const audioRef = useRef(null);
-  const [audioSelection, setAudioSelection] = useState("video"); // "video" or index
-  const [subSelection, setSubSelection] = useState("off"); // lang or "off"
+  const [audioSelection, setAudioSelection] = useState("video");
+  const [subSelection, setSubSelection] = useState("off");
 
-  // Keep audio element synced to video when using external audio track
   useEffect(() => {
     const v = videoRef.current;
     const a = audioRef.current;
@@ -397,9 +484,7 @@ function Player({ episode, t, onClose }) {
               <track key={idx} label={s.lang} kind="subtitles" srcLang={s.lang} src={s.url} default />
             ))}
           </video>
-          {/* External audio element for alternate languages */}
           <audio ref={audioRef} src={audioSelection === "video" ? undefined : episode.audios?.[parseInt(audioSelection)]?.url} />
-
           <Button variant="secondary" size="icon" className="absolute top-3 right-3 bg-white/10 hover:bg-white/20 border-white/20" onClick={onClose}>
             <X />
           </Button>
@@ -526,11 +611,30 @@ function SeriesForm({ t, onSubmit }) {
   );
 }
 
+// -------- SeasonForm (suggest next number + prevent duplicates) --------
 function SeasonForm({ t, db, onSubmit, onOpenSeries }) {
   const [seriesId, setSeriesId] = useState("");
   const [number, setNumber] = useState(1);
 
-  const series = db.series;
+  // suggest next season number when a series is chosen
+  useEffect(() => {
+    const s = db.series.find((x) => x.id === seriesId);
+    if (!s) return;
+    const max = s.seasons?.length ? Math.max(...s.seasons.map((se) => Number(se.number) || 0)) : 0;
+    setNumber(max + 1);
+  }, [seriesId, db.series]);
+
+  const handleAdd = () => {
+    if (!seriesId) return;
+    const s = db.series.find((x) => x.id === seriesId);
+    if (!s) return;
+    const exists = (s.seasons || []).some((se) => Number(se.number) === Number(number));
+    if (exists) {
+      alert(`${t.season} ${number} already exists for "${s.title}".`);
+      return;
+    }
+    onSubmit(seriesId, Number.isFinite(number) ? number : 1);
+  };
 
   return (
     <div className="grid gap-3 p-4 rounded-2xl bg-white/5">
@@ -545,32 +649,35 @@ function SeasonForm({ t, db, onSubmit, onOpenSeries }) {
           <SelectValue placeholder={t.series} />
         </SelectTrigger>
         <SelectContent className="bg-zinc-800 border-white/10">
-          {series.map((s) => (
+          {db.series.map((s) => (
             <SelectItem key={s.id} value={s.id}>
               {s.title}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
-      <Input type="number" min={1} value={number} onChange={(e) => setNumber(parseInt(e.target.value || "1"))} placeholder={t.season} />
-      <Button
-        disabled={!seriesId}
-        onClick={() => {
-          if (!seriesId) return;
-          onSubmit(seriesId, Number.isFinite(number) ? number : 1);
-        }}
-      >
+
+      <Input
+        type="number"
+        min={1}
+        value={number}
+        onChange={(e) => setNumber(parseInt(e.target.value || "1"))}
+        placeholder={t.season}
+      />
+
+      <Button disabled={!seriesId} onClick={handleAdd}>
         <Plus className="w-4 h-4 mr-2" /> {t.addSeason}
       </Button>
     </div>
   );
 }
 
+// -------- EpisodeForm (shows "Season N" labels; never UUIDs) --------
 function EpisodeForm({ t, db, onSubmit, openSeries }) {
   const [seriesId, setSeriesId] = useState("");
   const [seasonId, setSeasonId] = useState("");
   const [title, setTitle] = useState("");
-  const [number, setNumber] = useState(1);
+  the const [number, setNumber] = useState(1);
   const [description, setDescription] = useState("");
   const [videoUrl, setVideoUrl] = useState("");
 
@@ -584,12 +691,23 @@ function EpisodeForm({ t, db, onSubmit, openSeries }) {
   const series = db.series;
   const seasons = series.find((s) => s.id === seriesId)?.seasons || [];
 
+  // Human label for currently selected season
+  const currentSeason = seasons.find((se) => se.id === seasonId);
+  const seasonLabel = currentSeason ? `${t.season} ${currentSeason.number}` : "";
+
   const addAudio = () => setAudios((prev) => [...prev, { label: "", url: "" }]);
   const addSub = () => setSubtitles((prev) => [...prev, { lang: "en", url: "" }]);
 
   return (
     <div className="grid gap-3 p-4 rounded-2xl bg-white/5">
-      <Select value={seriesId} onValueChange={setSeriesId}>
+      {/* Series select */}
+      <Select
+        value={seriesId}
+        onValueChange={(v) => {
+          setSeriesId(v);
+          setSeasonId("");
+        }}
+      >
         <SelectTrigger className="bg-white/10 border-white/10">
           <SelectValue placeholder={t.series} />
         </SelectTrigger>
@@ -602,9 +720,10 @@ function EpisodeForm({ t, db, onSubmit, openSeries }) {
         </SelectContent>
       </Select>
 
-      <Select value={seasonId} onValueChange={setSeasonId}>
+      {/* Season select (shows Season N) */}
+      <Select value={seasonId} onValueChange={setSeasonId} disabled={!seriesId || seasons.length === 0}>
         <SelectTrigger className="bg-white/10 border-white/10">
-          <SelectValue placeholder={t.season} />
+          {seasonId ? <span>{seasonLabel}</span> : <SelectValue placeholder={t.season} />}
         </SelectTrigger>
         <SelectContent className="bg-zinc-800 border-white/10">
           {seasons.map((se) => (
@@ -617,7 +736,13 @@ function EpisodeForm({ t, db, onSubmit, openSeries }) {
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <Input placeholder={`${t.title}`} value={title} onChange={(e) => setTitle(e.target.value)} />
-        <Input type="number" min={1} placeholder="#" value={number} onChange={(e) => setNumber(parseInt(e.target.value || "1"))} />
+        <Input
+          type="number"
+          min={1}
+          placeholder="#"
+          value={number}
+          onChange={(e) => setNumber(parseInt(e.target.value || "1"))}
+        />
       </div>
       <Input placeholder={t.description} value={description} onChange={(e) => setDescription(e.target.value)} />
       <Input placeholder={t.videoUrl} value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} />
@@ -714,7 +839,7 @@ export default function App() {
     if (!selectedSeries) return;
     const latest = db.series.find((s) => s.id === selectedSeries.id);
     if (latest) setSelectedSeries(latest);
-  }, [db]); // run on any library change
+  }, [db]);
 
   const filteredSeries = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -756,10 +881,10 @@ export default function App() {
     setDB(next);
     saveDB(next);
     if (selectedEpisode?.id === episodeId) setSelectedEpisode(null);
-    if (selectedSeries?.id === seriesId) setSelectedSeries({ ...s }); // refresh drawer view
+    if (selectedSeries?.id === seriesId) setSelectedSeries({ ...s });
   };
 
-  // -------- Add Season inline in the Series Drawer (ADMIN ONLY) --------
+  // -------- Add Season inline in Series Drawer --------
   const addSeasonInline = (seriesId) => {
     if (!admin) return;
     const next = { ...db };
@@ -772,7 +897,6 @@ export default function App() {
     setDB(next);
     saveDB(next);
     if (selectedSeries?.id === seriesId) setSelectedSeries({ ...s });
-    // Friendly confirmation (non-blocking if browsers disable alerts)
     try { alert(MESSAGES[lang].seasonAdded(newNumber)); } catch {}
   };
 
@@ -857,8 +981,8 @@ export default function App() {
                 </Dialog>
               )}
             </div>
-            <div className="hidden md:block">
-              <div className="aspect-video rounded-2xl bg-white/40 border border-black/5" />
+            <div className="block">
+              <HeroCarousel items={db.series} onClickItem={setSelectedSeries} />
             </div>
           </div>
         </div>
@@ -983,7 +1107,6 @@ export default function App() {
                           <Trash className="w-4 h-4 mr-2" />
                           {t.deleteSeries}
                         </Button>
-                        {/* NEW: Add season inline here */}
                         <Button
                           variant="outline"
                           className="border-emerald-200 text-emerald-700 hover:bg-emerald-50"
