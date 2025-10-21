@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
 /**
- * StreamJoy — a Netflix/Disney‑like front end with:
+ * LëtzView — a Netflix/Disney‑like front end with:
  * - Series → Seasons → Episodes library
  * - Language switcher (top‑right)
  * - Player with subtitle & multi‑audio selection (external audio track sync)
@@ -30,7 +30,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 // ------------------------- Simple i18n -------------------------
 const MESSAGES = {
   en: {
-    appName: "StreamJoy",
+    appName: "LëtzView",
     search: "Search",
     series: "Series",
     seasons: "Seasons",
@@ -68,7 +68,7 @@ const MESSAGES = {
     libraryEmpty: "Your library is empty. Add a series from Admin → Add Series.",
   },
   pt: {
-    appName: "StreamJoy",
+    appName: "LëtzView",
     search: "Pesquisar",
     series: "Séries",
     seasons: "Temporadas",
@@ -106,7 +106,7 @@ const MESSAGES = {
     libraryEmpty: "A sua biblioteca está vazia. Adicione uma série em Admin → Adicionar Série.",
   },
   fr: {
-    appName: "StreamJoy",
+    appName: "LëtzView",
     search: "Rechercher",
     series: "Séries",
     seasons: "Saisons",
@@ -144,7 +144,7 @@ const MESSAGES = {
     libraryEmpty: "Votre bibliothèque est vide. Ajoutez une série via Admin → Ajouter une série.",
   },
   de: {
-    appName: "StreamJoy",
+    appName: "LëtzView",
     search: "Suchen",
     series: "Serien",
     seasons: "Staffeln",
@@ -182,7 +182,7 @@ const MESSAGES = {
     libraryEmpty: "Ihre Bibliothek ist leer. Fügen Sie eine Serie über Admin → Serie hinzufügen hinzu.",
   },
   lb: {
-    appName: "StreamJoy",
+    appName: "LëtzView",
     search: "Sichen",
     series: "Serie(n)",
     seasons: "Staffelen",
@@ -222,7 +222,7 @@ const MESSAGES = {
 };
 
 // ------------------------- Demo storage -------------------------
-const STORAGE_KEY = "streamjoy_db_v1";
+const STORAGE_KEY = "LëtzView_db_v1";
 
 function loadDB() {
   try {
@@ -734,7 +734,7 @@ export default function App() {
 
       <footer className="border-t border-black/5 mt-16">
         <div className="max-w-6xl mx-auto px-4 py-8 text-sm text-zinc-600 flex items-center justify-between">
-          <div>© {new Date().getFullYear()} StreamJoy</div>
+          <div>© {new Date().getFullYear()} LëtzView</div>
           <div className="flex items-center gap-2"><Globe className="w-4 h-4" /> {t.interfaceLanguage}: {lang.toUpperCase()}</div>
         </div>
       </footer>
