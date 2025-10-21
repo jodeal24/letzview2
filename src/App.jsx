@@ -594,7 +594,7 @@ export default function App() {
             <img
   src="/logo.png"
   alt="LëtzView logo"
-  className="w-12 h-12 rounded-2xl object-contain"
+  className="w-20 h-20 rounded-2xl object-contain"
 />
             <div>
               <div className="text-xl font-bold tracking-tight">{t.appName}</div>
