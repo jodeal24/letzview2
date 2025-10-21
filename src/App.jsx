@@ -263,13 +263,20 @@ function loadDB() {
     }
     const raw = localStorage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : { series: [] };
-  } catch (e) {
+  } catch {
     return { series: [] };
   }
 }
 function saveDB(db) {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
 }
+
+// ------------------------- Safe ID helper -------------------------
+// Works even if crypto.randomUUID() is unavailable
+const uid = () =>
+  (typeof crypto !== "undefined" && crypto.randomUUID
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
 
 // ------------------------- UI Helpers -------------------------
 const Section = ({ title, children, icon: Icon }) => (
@@ -443,7 +450,7 @@ function AdminPanel({ db, setDB, t }) {
   const [openSeries, setOpenSeries] = useState(null);
 
   const addSeries = (s) => {
-    const next = { ...db, series: [...db.series, { ...s, id: crypto.randomUUID(), seasons: [] }] };
+    const next = { ...db, series: [...db.series, { ...s, id: uid(), seasons: [] }] };
     setDB(next);
     saveDB(next);
   };
@@ -451,7 +458,7 @@ function AdminPanel({ db, setDB, t }) {
     const next = { ...db };
     const s = next.series.find((x) => x.id === seriesId);
     if (!s) return;
-    s.seasons.push({ id: crypto.randomUUID(), number, episodes: [] });
+    s.seasons.push({ id: uid(), number, episodes: [] });
     setDB(next);
     saveDB(next);
   };
@@ -460,7 +467,7 @@ function AdminPanel({ db, setDB, t }) {
     const s = next.series.find((x) => x.id === seriesId);
     const se = s?.seasons.find((x) => x.id === seasonId);
     if (!se) return;
-    se.episodes.push({ id: crypto.randomUUID(), ...ep });
+    se.episodes.push({ id: uid(), ...ep });
     setDB(next);
     saveDB(next);
   };
@@ -692,6 +699,13 @@ export default function App() {
   const [selectedSeries, setSelectedSeries] = useState(null);
   const [selectedEpisode, setSelectedEpisode] = useState(null);
 
+  // Keep the open drawer in sync with latest DB (so new seasons appear immediately)
+  useEffect(() => {
+    if (!selectedSeries) return;
+    const latest = db.series.find((s) => s.id === selectedSeries.id);
+    if (latest) setSelectedSeries(latest);
+  }, [db]); // run on any library change
+
   const filteredSeries = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return db.series;
@@ -807,7 +821,7 @@ export default function App() {
                     <SeriesForm
                       t={t}
                       onSubmit={(s) => {
-                        const next = { ...db, series: [...db.series, { ...s, id: crypto.randomUUID(), seasons: [] }] };
+                        const next = { ...db, series: [...db.series, { ...s, id: uid(), seasons: [] }] };
                         setDB(next);
                         saveDB(next);
                       }}
