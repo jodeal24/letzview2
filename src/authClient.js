@@ -1,5 +1,5 @@
 // src/authClient.js
-import { auth } from "./firebase";
+import { auth } from "./dataClient";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
 
 // Login with email & password
