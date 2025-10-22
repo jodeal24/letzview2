@@ -1,11 +1,11 @@
 // src/dataClient.js
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import {
   getFirestore,
   collection,
   getDocs,
   doc,
-  setDoc
+  setDoc,
 } from "firebase/firestore";
 
 // Your Firebase config (from Firebase Console → Project settings → Web app)
@@ -15,11 +15,11 @@ const firebaseConfig = {
   projectId: "YOUR_PROJECT_ID",
   storageBucket: "YOUR_PROJECT_ID.appspot.com",
   messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID"
+  appId: "YOUR_APP_ID",
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
+// ✅ Initialize Firebase safely (avoid “already exists” errors)
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 const db = getFirestore(app);
 
 // Fetch all series from Firestore
@@ -38,4 +38,5 @@ export async function saveSeries(series) {
   await setDoc(doc(db, "series", series.id), series);
 }
 
+// Export the Firestore instance for reuse in other files
 export { db };
