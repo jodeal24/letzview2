@@ -12,6 +12,7 @@
     "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-select": "^1.2.2",
     "@vercel/kv": "^1.0.0",
+    "@upstash/redis": "^1.29.0"
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "framer-motion": "^11.0.0",
