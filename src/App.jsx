@@ -579,6 +579,8 @@ function SeasonForm({ t, db, onSubmit, onOpenSeries }) {
   const [seriesId, setSeriesId] = useState("");
   const [number, setNumber] = useState(1);
 
+  const series = db.series;
+
   useEffect(() => {
     const s = db.series.find((x) => x.id === seriesId);
     if (!s) return;
