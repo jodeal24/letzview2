@@ -24,6 +24,44 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
+// --- Shared storage via /api/db, with local fallback ---
+const STORAGE_KEY = "letzview_db_v1";
+
+async function loadDB() {
+  try {
+    const r = await fetch("/api/db", { cache: "no-store" });
+    if (r.ok) return await r.json();
+  } catch (_) {}
+  // fallback if offline
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : { series: [] };
+  } catch {
+    return { series: [] };
+  }
+}
+
+async function saveDBRemote(db) {
+  const password = localStorage.getItem("sj_admin_pw") || "admin";
+  const r = await fetch("/api/db", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password, data: db }),
+  });
+
+  if (!r.ok) {
+    let msg = `Save failed (${r.status})`;
+    try {
+      const j = await r.json();
+      if (j?.error) msg = `Save failed: ${j.error}`;
+    } catch {}
+    alert(msg + "\n\nMake sure the ADMIN_PASSWORD env var in Vercel matches the password you typed when logging in.");
+    throw new Error(msg);
+  }
+
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); } catch {}
+}
+
 /**
  * LëtzView — Netflix/Disney-like front end
  * - Series → Seasons → Episodes
@@ -798,10 +836,6 @@ export default function App() {
 
   const [selectedSeries, setSelectedSeries] = useState(null);
   const [selectedEpisode, setSelectedEpisode] = useState(null);
-
-  useEffect(() => {
-    loadDB().then(setDB).catch(console.error);
-  }, []);
 
   // keep drawer in sync with latest db
   useEffect(() => {
