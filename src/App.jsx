@@ -896,13 +896,14 @@ export default function App() {
 
     {/* 🎬 INTRO VIDEO */}
     <IntroSplash
-  src="https://storage.googleapis.com/letzview-media/Logo%20Animation.mp4"  // your video
-  poster="/logo.png"                // optional
-  logoSrc="/logo.png"               // the logo that appears at the END
+  src="https://storage.googleapis.com/letzview-media/Intro%20Video.mp4"  // your video URL
+  poster="/logo.png"
+  logoSrc="/logo.png"               // appears at the end
   showOnce={true}
-  storageKey="intro_seen_v2"        // bump this to re-show after changes
-  logoDurationMs={900}              // zoom/fade timing
+  storageKey="intro_seen_v3"        // bump version to test again
+  logoDurationMs={1200}             // slower fade
 />
+
       
       {/* Header */}
       <header className="sticky top-0 z-20 backdrop-blur bg-white/60 border-b border-black/5">
