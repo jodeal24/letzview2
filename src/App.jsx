@@ -789,7 +789,11 @@ export default function App() {
     document.title = t.appName || "LëtzView";
   }, [lang, t.appName]);
   
-  const [db, setDB] = useState({ series: [] });
+  cconst [db, setDB] = useState({ series: [] });
+
+  useEffect(() => {
+    loadDB().then(setDB).catch(console.error);
+  }, []);
   
   const [query, setQuery] = useState("");
   const [admin, setAdmin] = useState(() => localStorage.getItem("sj_admin") === "1");
