@@ -24,7 +24,13 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 
-// --- Shared storage via /api/db, with local fallback ---
+// 🔹 NEW: show the Firebase Admin page when path === "/admin"
+import Admin from "./Admin";
+
+// 🔹 NEW: load data from Firestore
+import { fetchCatalog } from "./dataClient";
+
+// --- (kept) Shared storage helpers; writes are admin-only in your UI anyway
 const STORAGE_KEY = "letzview_db_v1";
 
 async function loadDB() {
@@ -67,7 +73,7 @@ async function saveDBRemote(db) {
  * - Series → Seasons → Episodes
  * - Language switcher
  * - Player with subtitles + multi-audio (external <audio> sync)
- * - Admin-only upload (localStorage used as offline fallback; shared data via Vercel KV)
+ * - Admin-only upload (now moved to /admin with Firebase)
  */
 
 // ------------------------- i18n -------------------------
@@ -513,7 +519,7 @@ function Player({ episode, t, onClose }) {
   );
 }
 
-// ------------------------- Admin Panels -------------------------
+// ------------------------- Admin Panels (kept for public UI but gated by `admin`) -------------------------
 function AdminPanel({ db, setDB, t }) {
   const [openSeries, setOpenSeries] = useState(null);
 
@@ -792,6 +798,12 @@ function EpisodeForm({ t, db, onSubmit, openSeries }) {
 
 // ------------------------- Main App -------------------------
 export default function App() {
+  // 🔹 Route switch: if URL path is /admin, render Admin page
+  const path = typeof window !== "undefined" ? window.location.pathname : "/";
+  if (path === "/admin") {
+    return <Admin />;
+  }
+
   const [lang, setLang] = useState(() => localStorage.getItem("sj_lang") || "en");
   const t = MESSAGES[lang] || MESSAGES.en;
   useEffect(() => {
@@ -801,8 +813,11 @@ export default function App() {
   
   const [db, setDB] = useState({ series: [] });
 
+  // 🔹 Load catalog from Firestore on first render
   useEffect(() => {
-    loadDB().then(setDB).catch(console.error);
+    fetchCatalog()
+      .then((series) => setDB({ series }))
+      .catch(console.error);
   }, []);
   
   const [query, setQuery] = useState("");
@@ -825,21 +840,16 @@ export default function App() {
     return db.series.filter((s) => s.title.toLowerCase().includes(q) || s.description?.toLowerCase().includes(q));
   }, [db, query]);
 
+  // 🔹 Log in: go to /admin (Firebase Auth is on that page)
   const login = () => {
-  const pw = prompt(`${t.password}`); // ask the user
-  if (!pw) return;
-  // Remember the password for API writes
-  localStorage.setItem("sj_admin_pw", pw);
-  setAdmin(true);
-  localStorage.setItem("sj_admin", "1");
-  alert("Admin mode enabled.");
-};
+    window.location.href = "/admin";
+  };
 
-const logout = () => {
-  setAdmin(false);
-  localStorage.removeItem("sj_admin");
-  localStorage.removeItem("sj_admin_pw");
-};
+  const logout = () => {
+    setAdmin(false);
+    localStorage.removeItem("sj_admin");
+    localStorage.removeItem("sj_admin_pw");
+  };
 
   const deleteSeries = (seriesId) => {
     if (!admin) return;
@@ -937,6 +947,7 @@ const logout = () => {
             <div>
               <h1 className="text-2xl md:text-3xl font-bold mb-2">{t.series}</h1>
               <p className="text-zinc-700 mb-4">{db.series.length ? "" : t.libraryEmpty}</p>
+              {/* Dialog for adding series kept, but only useful if admin is enabled (not on public site) */}
               {admin && (
                 <Dialog>
                   <DialogTrigger asChild>
@@ -1019,7 +1030,7 @@ const logout = () => {
           </Dialog>
         )}
 
-        {/* Admin Section */}
+        {/* Admin Section (kept but hidden for normal viewers) */}
         {admin && (
           <section className="mt-10">
             <div className="flex items-center gap-2 mb-4">
@@ -1140,7 +1151,8 @@ const logout = () => {
                                           className="border-red-200 text-red-600 hover:bg-red-50"
                                           onClick={(e) => {
                                             e.stopPropagation();
-                                            deleteEpisode(selectedSeries.id, season.id, ep.id);
+                                            // kept for legacy; real deletes should be done in /admin
+                                            alert("Delete episodes in the Admin page.");
                                           }}
                                           title={t.deleteEpisode}
                                         >
