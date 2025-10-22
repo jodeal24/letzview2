@@ -46,12 +46,37 @@ export default function Admin() {
   };
 
   if (!user)
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center">
-        <h2 className="text-xl font-semibold mb-4">Admin Login</h2>
-        <Button onClick={login}>Sign in with Google</Button>
-      </div>
-    );
+  return (
+    <div className="min-h-screen flex flex-col items-center justify-center">
+      <h2 className="text-xl font-semibold mb-4">Admin Login</h2>
+      <form
+        className="flex flex-col gap-3 w-64"
+        onSubmit={async (e) => {
+          e.preventDefault();
+          const email = e.target.email.value.trim();
+          const password = e.target.password.value.trim();
+          if (!email || !password) return alert("Please fill in both fields.");
+          try {
+            await login(email, password);
+          } catch (_) {}
+        }}
+      >
+        <input
+          type="email"
+          name="email"
+          placeholder="Email"
+          className="border rounded px-3 py-2 text-sm"
+        />
+        <input
+          type="password"
+          name="password"
+          placeholder="Password"
+          className="border rounded px-3 py-2 text-sm"
+        />
+        <Button type="submit">Login</Button>
+      </form>
+    </div>
+  );
 
   return (
     <div className="max-w-3xl mx-auto p-6">
