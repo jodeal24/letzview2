@@ -898,10 +898,9 @@ export default function App() {
     <IntroSplash
   src="https://storage.googleapis.com/letzview-media/Intro%20Video.mp4"  // your video URL
   poster="/logo.png"
-  logoSrc="/logo.png"               // appears at the end
   showOnce={true}
-  storageKey="intro_seen_v3"        // bump version to test again
-  logoDurationMs={1200}             // slower fade
+  storageKey="intro_seen_v4"     // bump version to test again
+  fadeDurationMs={800}           // controls fade-out speed
 />
 
       
