@@ -1,37 +1,24 @@
 // src/authClient.js
-import { initializeApp, getApps, getApp } from "firebase/app";
-import {
-  getAuth,
-  GoogleAuthProvider,
-  signInWithPopup,
-  onAuthStateChanged,
-  signOut,
-} from "firebase/auth";
+import { auth } from "./firebase";
+import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
 
-// Your Firebase config (same as in dataClient.js)
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID",
-};
-
-// ✅ Initialize Firebase safely (avoid duplicate-app error)
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const auth = getAuth(app);
-
-// ---------- Auth helpers ----------
-export function login() {
-  const provider = new GoogleAuthProvider();
-  return signInWithPopup(auth, provider);
+// Login with email & password
+export async function login(email, password) {
+  try {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    return userCredential.user;
+  } catch (error) {
+    alert("Login failed: " + error.message);
+    throw error;
+  }
 }
 
+// Observe user authentication state
 export function observeAuth(callback) {
   return onAuthStateChanged(auth, callback);
 }
 
-export function logout() {
-  return signOut(auth);
+// Logout
+export async function logout() {
+  await signOut(auth);
 }
