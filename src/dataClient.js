@@ -37,3 +37,5 @@ export async function fetchCatalog() {
 export async function saveSeries(series) {
   await setDoc(doc(db, "series", series.id), series);
 }
+
+export { db };
