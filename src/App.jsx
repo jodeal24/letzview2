@@ -254,31 +254,6 @@ const MESSAGES = {
   },
 };
 
-// --- Shared storage via /api/db, with local fallback ---
-const STORAGE_KEY = "letzview_db_v1";
-
-async function saveDBRemote(db) {
-  const password = localStorage.getItem("sj_admin_pw") || "admin"; // default fallback
-  const r = await fetch("/api/db", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ password, data: db }),
-  });
-
-  if (!r.ok) {
-    let msg = `Save failed (${r.status})`;
-    try {
-      const j = await r.json();
-      if (j?.error) msg = `Save failed: ${j.error}`;
-    } catch {}
-    alert(msg + "\n\nTip: make sure the ADMIN_PASSWORD env var in Vercel matches the password you typed when logging in.");
-    throw new Error(msg);
-  }
-
-  // local mirror (offline fallback)
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); } catch {}
-}
-
 // ------------------------- helpers -------------------------
 const uid = () =>
   (typeof crypto !== "undefined" && crypto.randomUUID
