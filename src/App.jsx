@@ -340,9 +340,7 @@ function HeroCarousel({ items = [], onClickItem }) {
         animate={{ opacity: 1, scale: 1 }}
         transition={{ type: "spring", stiffness: 120, damping: 20 }}
         style={{
-          backgroundImage: current?.backdropUrl
-            ? `url(${current.backdropUrl})`
-            : current?.posterUrl
+          backgroundImage: current?.posterUrl
             ? `url(${current.posterUrl})`
             : "none",
           backgroundSize: "cover",
@@ -392,7 +390,9 @@ function HeroCarousel({ items = [], onClickItem }) {
             <button
               key={idx}
               onClick={() => setI(idx)}
-              className={`h-1.5 rounded-full transition-all ${i === idx ? "w-6 bg-black/70" : "w-2 bg-black/30"}`}
+              className={`h-1.5 rounded-full transition-all ${
+                i === idx ? "w-6 bg-black/70" : "w-2 bg-black/30"
+              }`}
               aria-label={`Go to slide ${idx + 1}`}
             />
           ))}
