@@ -1,24 +1,23 @@
 // src/authClient.js
 import { auth } from "./dataClient";
-import { signInWithEmailAndPassword, onAuthStateChanged, signOut } from "firebase/auth";
+import {
+  signInWithEmailAndPassword,
+  onAuthStateChanged,
+  signOut,
+} from "firebase/auth";
 
-// Login with email & password
+// Email + Password login
 export async function login(email, password) {
-  try {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    return userCredential.user;
-  } catch (error) {
-    alert("Login failed: " + error.message);
-    throw error;
-  }
+  const userCred = await signInWithEmailAndPassword(auth, email, password);
+  return userCred.user;
 }
 
-// Observe user authentication state
+// Observe auth state changes
 export function observeAuth(callback) {
   return onAuthStateChanged(auth, callback);
 }
 
 // Logout
-export async function logout() {
-  await signOut(auth);
+export function logout() {
+  return signOut(auth);
 }
