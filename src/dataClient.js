@@ -1,5 +1,6 @@
 // src/dataClient.js
 import { initializeApp, getApps, getApp } from "firebase/app";
+import { getAuth } from "firebase/auth";
 import {
   getFirestore,
   collection,
@@ -8,19 +9,24 @@ import {
   setDoc,
 } from "firebase/firestore";
 
-// Your Firebase config (from Firebase Console → Project settings → Web app)
+// ✅ Your actual Firebase config
 const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_PROJECT_ID.appspot.com",
-  messagingSenderId: "YOUR_SENDER_ID",
-  appId: "YOUR_APP_ID",
+  apiKey: "AIzaSyD4txlg8WkvFW4-KygsuhjyhqdhnZ9BOPM",
+  authDomain: "letzview-a0c3e.firebaseapp.com",
+  projectId: "letzview-a0c3e",
+  storageBucket: "letzview-a0c3e.firebasestorage.app",
+  messagingSenderId: "672436329327",
+  appId: "1:672436329327:web:70c10c14124e1a694ba69a",
 };
 
 // ✅ Initialize Firebase safely (avoid “already exists” errors)
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const db = getFirestore(app);
+
+// Export Firebase services
+export const auth = getAuth(app);
+export const db = getFirestore(app);
+
+// ------------------------- Firestore helpers -------------------------
 
 // Fetch all series from Firestore
 export async function fetchCatalog() {
@@ -37,6 +43,3 @@ export async function fetchCatalog() {
 export async function saveSeries(series) {
   await setDoc(doc(db, "series", series.id), series);
 }
-
-// Export the Firestore instance for reuse in other files
-export { db };
