@@ -789,7 +789,7 @@ export default function App() {
     document.title = t.appName || "LëtzView";
   }, [lang, t.appName]);
   
-  cconst [db, setDB] = useState({ series: [] });
+  const [db, setDB] = useState({ series: [] });
 
   useEffect(() => {
     loadDB().then(setDB).catch(console.error);
