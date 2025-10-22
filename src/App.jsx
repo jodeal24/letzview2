@@ -216,7 +216,7 @@ const MESSAGES = {
   },
 };
 
-// ------------------------- shared storage (KV via /api/db) -------------------------
+// --- Shared storage via /api/db, with local fallback ---
 const STORAGE_KEY = "letzview_db_v1";
 
 async function loadDB() {
@@ -224,7 +224,7 @@ async function loadDB() {
     const r = await fetch("/api/db", { cache: "no-store" });
     if (r.ok) return await r.json();
   } catch (_) {}
-  // offline/local fallback
+  // fallback if offline
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : { series: [] };
@@ -788,8 +788,9 @@ export default function App() {
     localStorage.setItem("sj_lang", lang);
     document.title = t.appName || "LëtzView";
   }, [lang, t.appName]);
-
+  
   const [db, setDB] = useState({ series: [] });
+  
   const [query, setQuery] = useState("");
   const [admin, setAdmin] = useState(() => localStorage.getItem("sj_admin") === "1");
   const [editingSeries, setEditingSeries] = useState(null);
