@@ -820,16 +820,20 @@ export default function App() {
   }, [db, query]);
 
   const login = () => {
-    const pw = prompt(`${t.password}`);
-    if (pw === "admin") {
-      setAdmin(true);
-      localStorage.setItem("sj_admin", "1");
-    } else alert(t.wrongPassword);
-  };
-  const logout = () => {
-    setAdmin(false);
-    localStorage.removeItem("sj_admin");
-  };
+  const pw = prompt(`${t.password}`); // ask the user
+  if (!pw) return;
+  // Remember the password for API writes
+  localStorage.setItem("sj_admin_pw", pw);
+  setAdmin(true);
+  localStorage.setItem("sj_admin", "1");
+  alert("Admin mode enabled.");
+};
+
+const logout = () => {
+  setAdmin(false);
+  localStorage.removeItem("sj_admin");
+  localStorage.removeItem("sj_admin_pw");
+};
 
   const deleteSeries = (seriesId) => {
     if (!admin) return;
