@@ -23,6 +23,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import IntroSplash from "./IntroSplash";
 
 // 🔹 NEW: show the Firebase Admin page when path === "/admin"
 import Admin from "./Admin";
@@ -892,6 +893,16 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-50 via-white to-rose-50 text-zinc-900">
+
+    {/* 🎬 INTRO VIDEO */}
+    <IntroSplash
+      src="https://storage.googleapis.com/letzview-media/Logo%20Animation.mp4"
+      poster="/logo.png"
+      showOnce={true}
+      storageKey="intro_seen_v1"
+      autoHideMs={null}
+    />
+      
       {/* Header */}
       <header className="sticky top-0 z-20 backdrop-blur bg-white/60 border-b border-black/5">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
