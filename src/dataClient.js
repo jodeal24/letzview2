@@ -14,10 +14,11 @@ const firebaseConfig = {
   apiKey: "AIzaSyD4txlg8WkvFW4-KygsuhjyhqdhnZ9BOPM",
   authDomain: "letzview-a0c3e.firebaseapp.com",
   projectId: "letzview-a0c3e",
-  storageBucket: "letzview-a0c3e.firebasestorage.app",
+  storageBucket: "letzview-a0c3e.appspot.com",   // ✅ corrected
   messagingSenderId: "672436329327",
   appId: "1:672436329327:web:70c10c14124e1a694ba69a",
 };
+
 
 // ✅ Initialize Firebase safely (avoid “already exists” errors)
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
