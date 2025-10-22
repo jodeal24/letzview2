@@ -19,6 +19,7 @@ export default function Admin() {
   // new-series form
   const [newTitle, setNewTitle] = useState("");
   const [newPoster, setNewPoster] = useState("");
+  const [newBackdrop, setNewBackdrop] = useState(""); // 👈 Backdrop
   const [newDesc, setNewDesc] = useState("");
   const [error, setError] = useState("");
 
@@ -39,6 +40,7 @@ export default function Admin() {
       title: newTitle.trim(),
       description: newDesc.trim(),
       posterUrl: newPoster.trim(),
+      backdropUrl: newBackdrop.trim(), // 👈 saved
       seasons: [],
     };
     await saveSeries(s);
@@ -46,6 +48,7 @@ export default function Admin() {
     setNewTitle("");
     setNewDesc("");
     setNewPoster("");
+    setNewBackdrop(""); // reset
   };
 
   const handleDeleteSeries = async (id) => {
@@ -138,6 +141,7 @@ export default function Admin() {
         <Input placeholder="Title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
         <Input placeholder="Description" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} />
         <Input placeholder="Poster URL" value={newPoster} onChange={(e) => setNewPoster(e.target.value)} />
+        <Input placeholder="Backdrop URL (optional)" value={newBackdrop} onChange={(e) => setNewBackdrop(e.target.value)} />
         <Button onClick={handleAddSeries}>
           <Plus className="w-4 h-4 mr-2" /> Add Series
         </Button>
@@ -205,6 +209,15 @@ function SeriesCard({ series, onAddSeason, onAddEpisode, onDeleteEpisode, onDele
           <Trash className="w-4 h-4 mr-2" /> Delete series
         </Button>
       </div>
+
+      {/* Optional backdrop preview */}
+      {series.backdropUrl && (
+        <div
+          className="mb-3 h-28 rounded-lg bg-cover bg-center border border-black/10"
+          style={{ backgroundImage: `url(${series.backdropUrl})` }}
+          title="Backdrop preview"
+        />
+      )}
 
       {/* Seasons list */}
       <div className="mb-4">
