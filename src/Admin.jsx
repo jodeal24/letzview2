@@ -6,49 +6,17 @@ import { Plus, Trash, Video, Pencil } from "lucide-react";
 import { fetchCatalog, saveSeries, db } from "./dataClient";
 import { login, observeAuth, logout } from "./authClient";
 import { collection, doc, deleteDoc } from "firebase/firestore";
-import { translateText } from "./translateClient"; // requires /api/translate + env var on Vercel
 
-/* ----------------- helpers ----------------- */
-
-// unique id
 const uid = () =>
   (typeof crypto !== "undefined" && crypto.randomUUID
     ? crypto.randomUUID()
     : `${Date.now()}-${Math.random().toString(16).slice(2)}`);
 
-// language used for inputs in admin (we reuse the viewer’s choice)
-const inputLang =
-  (typeof window !== "undefined" && localStorage.getItem("sj_lang")) || "en";
-
-// wrap a plain string into a language map
-function asLangMap(input, lang = "en") {
-  if (!input) return {};
-  if (typeof input === "object") return input;
-  return { [lang]: String(input) };
-}
-
-// read a language-specific value from map or string
-function getLang(val, lang = "en") {
-  if (!val) return "";
-  if (typeof val === "string") return val;
-  return val[lang] || "";
-}
-
-// set/merge language value into a map
-function setLang(mapOrString, lang, value) {
-  const m =
-    typeof mapOrString === "object" && mapOrString !== null ? { ...mapOrString } : {};
-  if (value?.trim()) m[lang] = value.trim();
-  return m;
-}
-
-/* ----------------- Admin Root ----------------- */
-
 export default function Admin() {
   const [user, setUser] = useState(null);
   const [series, setSeries] = useState([]);
 
-  // new series form
+  // new-series form
   const [newTitle, setNewTitle] = useState("");
   const [newPoster, setNewPoster] = useState("");
   const [newBackdrop, setNewBackdrop] = useState("");
@@ -56,27 +24,22 @@ export default function Admin() {
   const [error, setError] = useState("");
 
   useEffect(() => observeAuth(setUser), []);
-  useEffect(() => {
-    fetchCatalog().then(setSeries).catch(console.error);
-  }, []);
+  useEffect(() => { fetchCatalog().then(setSeries).catch(console.error); }, []);
 
   // ---------- Series CRUD ----------
   const handleAddSeries = async () => {
     if (!newTitle.trim()) return alert("Title required.");
     const s = {
       id: uid(),
-      title: asLangMap(newTitle, inputLang),
-      description: asLangMap(newDesc, inputLang),
+      title: newTitle.trim(),
+      description: newDesc.trim(),
       posterUrl: newPoster.trim(),
       backdropUrl: newBackdrop.trim(),
       seasons: [],
     };
     await saveSeries(s);
     setSeries((prev) => [...prev, s]);
-    setNewTitle("");
-    setNewDesc("");
-    setNewPoster("");
-    setNewBackdrop("");
+    setNewTitle(""); setNewDesc(""); setNewPoster(""); setNewBackdrop("");
   };
 
   const handleDeleteSeries = async (id) => {
@@ -147,21 +110,14 @@ export default function Admin() {
             const email = e.target.email.value.trim();
             const password = e.target.password.value.trim();
             if (!email || !password) return alert("Please fill in both fields.");
-            try {
-              await login(email, password);
-            } catch (err) {
-              setError(err.code || err.message);
-            }
+            try { await login(email, password); }
+            catch (err) { setError(err.code || err.message); }
           }}
         >
           <Input type="email" name="email" placeholder="Email" required />
           <Input type="password" name="password" placeholder="Password" required />
           <Button type="submit">Login</Button>
-          {error && (
-            <div className="text-red-600 text-sm text-center mt-2">
-              {String(error).replace("Firebase:", "").trim()}
-            </div>
-          )}
+          {error && <div className="text-red-600 text-sm text-center mt-2">{String(error).replace("Firebase:", "").trim()}</div>}
         </form>
       </div>
     );
@@ -176,7 +132,7 @@ export default function Admin() {
 
       {/* Add Series */}
       <div className="grid gap-3 p-4 rounded-2xl bg-white/5 mb-8">
-        <h3 className="text-lg font-semibold mb-2">Add New Series ({inputLang.toUpperCase()})</h3>
+        <h3 className="text-lg font-semibold mb-2">Add New Series</h3>
         <Input placeholder="Title" value={newTitle} onChange={(e) => setNewTitle(e.target.value)} />
         <Input placeholder="Description" value={newDesc} onChange={(e) => setNewDesc(e.target.value)} />
         <Input placeholder="Poster URL" value={newPoster} onChange={(e) => setNewPoster(e.target.value)} />
@@ -206,15 +162,7 @@ export default function Admin() {
 
 /* -------------------- Child components -------------------- */
 
-function SeriesCard({
-  series,
-  onSaveSeries,
-  onAddSeason,
-  onAddEpisode,
-  onEditEpisode,
-  onDeleteEpisode,
-  onDeleteSeries,
-}) {
+function SeriesCard({ series, onSaveSeries, onAddSeason, onAddEpisode, onEditEpisode, onDeleteEpisode, onDeleteSeries }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(series);
 
@@ -224,72 +172,40 @@ function SeriesCard({
   const [epNumber, setEpNumber] = useState(1);
   const [epDesc, setEpDesc] = useState("");
   const [epVideo, setEpVideo] = useState("");
-  const [epAudios, setEpAudios] = useState([]); // [{label,url}]
-  const [epSubs, setEpSubs] = useState([]); // [{lang,url}]
+  const [epAudios, setEpAudios] = useState([]);       // [{label,url}]
+  const [epSubs, setEpSubs] = useState([]);           // [{lang,url}]
 
   useEffect(() => setDraft(series), [series]);
   useEffect(() => {
     if (!seasonForEp && series.seasons?.length) setSeasonForEp(series.seasons[0].id);
   }, [series.seasons, seasonForEp]);
 
-  const startEdit = () => { setEditing(true); setDraft(series); };
-  const cancelEdit = () => { setEditing(false); setDraft(series); };
-
-  const saveEdit = async () => {
-    const clean = {
-      ...draft,
-      title: asLangMap(draft.title, inputLang),
-      description: asLangMap(draft.description, inputLang),
-      posterUrl: (draft.posterUrl || "").trim(),
-      backdropUrl: (draft.backdropUrl || "").trim(),
-    };
-    await onSaveSeries(clean);
-    setEditing(false);
-  };
-
-  const autoTranslateSeries = async () => {
-    try {
-      const targets = ["fr", "de", "lb"].filter((t) => t !== inputLang);
-      const baseTitle = getLang(draft.title, inputLang) || (typeof draft.title === "string" ? draft.title : "");
-      const baseDesc  = getLang(draft.description, inputLang) || (typeof draft.description === "string" ? draft.description : "");
-
-      if (!baseTitle && !baseDesc) {
-        alert(`Nothing to translate. Fill ${inputLang.toUpperCase()} fields first.`);
-        return;
-      }
-
-      const updates = { ...draft };
-
-      for (const t of targets) {
-        if (baseTitle && !getLang(updates.title, t)) {
-          const tt = await translateText(baseTitle, t, inputLang);
-          updates.title = setLang(updates.title, t, tt);
-        }
-        if (baseDesc && !getLang(updates.description, t)) {
-          const td = await translateText(baseDesc, t, inputLang);
-          updates.description = setLang(updates.description, t, td);
-        }
-      }
-
-      setDraft(updates);
-      alert("Auto-translation filled missing languages (FR/DE/LB).");
-    } catch (e) {
-      alert(`Translate failed: ${e.message || e}`);
-    }
-  };
-
   const addEpisodeLocal = () => {
     if (!seasonForEp) return alert("Choose a season first.");
     if (!epTitle || !epVideo) return alert("Episode title and video URL are required.");
     onAddEpisode(seasonForEp, {
-      title: asLangMap(epTitle, inputLang),
+      title: epTitle.trim(),
       number: Number(epNumber) || 1,
-      description: asLangMap(epDesc, inputLang),
+      description: epDesc.trim(),
       videoUrl: epVideo.trim(),
       audios: epAudios.filter(a => a.label && a.url).map(a => ({ label: a.label.trim(), url: a.url.trim() })),
       subtitles: epSubs.filter(s => s.lang && s.url).map(s => ({ lang: s.lang.trim(), url: s.url.trim() })),
     });
     setEpTitle(""); setEpNumber(1); setEpDesc(""); setEpVideo(""); setEpAudios([]); setEpSubs([]);
+  };
+
+  const startEdit = () => { setEditing(true); setDraft(series); };
+  const cancelEdit = () => { setEditing(false); setDraft(series); };
+  const saveEdit = async () => {
+    const clean = {
+      ...draft,
+      title: (draft.title || "").trim(),
+      description: (draft.description || "").trim(),
+      posterUrl: (draft.posterUrl || "").trim(),
+      backdropUrl: (draft.backdropUrl || "").trim(),
+    };
+    await onSaveSeries(clean);
+    setEditing(false);
   };
 
   return (
@@ -298,21 +214,18 @@ function SeriesCard({
       <div className="flex items-center justify-between mb-3">
         {editing ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 flex-1 mr-3">
-            <Input placeholder="Title" value={getLang(draft.title, inputLang)} onChange={(e) => setDraft({ ...draft, title: setLang(draft.title, inputLang, e.target.value) })} />
+            <Input placeholder="Title" value={draft.title || ""} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
             <Input placeholder="Poster URL" value={draft.posterUrl || ""} onChange={(e) => setDraft({ ...draft, posterUrl: e.target.value })} />
             <Input placeholder="Backdrop URL" value={draft.backdropUrl || ""} onChange={(e) => setDraft({ ...draft, backdropUrl: e.target.value })} />
-            <Input placeholder="Description" value={getLang(draft.description, inputLang)} onChange={(e) => setDraft({ ...draft, description: setLang(draft.description, inputLang, e.target.value) })} />
+            <Input placeholder="Description" value={draft.description || ""} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
           </div>
         ) : (
-          <div className="font-semibold text-lg">
-            {getLang(series.title, inputLang) || (typeof series.title === "string" ? series.title : "")}
-          </div>
+          <div className="font-semibold text-lg">{series.title}</div>
         )}
 
         <div className="flex gap-2">
           {editing ? (
             <>
-              <Button variant="outline" onClick={autoTranslateSeries}>Auto-translate (FR/DE/LB)</Button>
               <Button variant="outline" onClick={cancelEdit}>Cancel</Button>
               <Button onClick={saveEdit}>Save</Button>
             </>
@@ -358,7 +271,7 @@ function SeriesCard({
       {/* Add episode */}
       {series.seasons?.length > 0 && (
         <div className="p-3 rounded-xl bg-white/80 border border-black/10">
-          <div className="flex items-center gap-2 mb-3 font-medium"><Video className="w-4 h-4" /> Add Episode ({inputLang.toUpperCase()})</div>
+          <div className="flex items-center gap-2 mb-3 font-medium"><Video className="w-4 h-4" /> Add Episode</div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-2">
             <select className="border rounded px-3 py-2 text-sm bg-white" value={seasonForEp} onChange={(e) => setSeasonForEp(e.target.value)}>
@@ -415,14 +328,7 @@ function SeasonBlock({ season, onEditEpisode, onDeleteEpisode }) {
 
       <div className="space-y-2">
         {season.episodes?.slice().sort((a, b) => a.number - b.number).map((ep) => (
-          <EpisodeRow
-            key={ep.id}
-            ep={ep}
-            open={openId === ep.id}
-            setOpen={() => setOpenId(openId === ep.id ? null : ep.id)}
-            onEdit={(patch) => onEditEpisode(ep.id, patch)}
-            onDelete={() => onDeleteEpisode(ep.id)}
-          />
+          <EpisodeRow key={ep.id} ep={ep} onEdit={(patch) => onEditEpisode(ep.id, patch)} onDelete={() => onDeleteEpisode(ep.id)} open={openId === ep.id} setOpen={() => setOpenId(openId === ep.id ? null : ep.id)} />
         ))}
       </div>
     </div>
@@ -436,10 +342,10 @@ function EpisodeRow({ ep, onEdit, onDelete, open, setOpen }) {
   const save = async () => {
     const clean = {
       ...draft,
-      title: asLangMap(draft.title, inputLang),
-      description: asLangMap(draft.description, inputLang),
-      number: Number(draft.number) || 1,
+      title: (draft.title || "").trim(),
+      description: (draft.description || "").trim(),
       videoUrl: (draft.videoUrl || "").trim(),
+      number: Number(draft.number) || 1,
       audios: (draft.audios || []).filter(a => a.label && a.url).map(a => ({ label: a.label.trim(), url: a.url.trim() })),
       subtitles: (draft.subtitles || []).filter(s => s.lang && s.url).map(s => ({ lang: s.lang.trim(), url: s.url.trim() })),
     };
@@ -447,48 +353,12 @@ function EpisodeRow({ ep, onEdit, onDelete, open, setOpen }) {
     setOpen(false);
   };
 
-  const autoTranslateEpisode = async () => {
-    try {
-      const targets = ["fr", "de", "lb"].filter((t) => t !== inputLang);
-
-      const baseTitle = getLang(draft.title, inputLang) || (typeof draft.title === "string" ? draft.title : "");
-      const baseDesc  = getLang(draft.description, inputLang) || (typeof draft.description === "string" ? draft.description : "");
-
-      if (!baseTitle && !baseDesc) {
-        alert(`Nothing to translate. Fill ${inputLang.toUpperCase()} fields first.`);
-        return;
-      }
-
-      const updates = { ...draft };
-
-      for (const t of targets) {
-        if (baseTitle && !getLang(updates.title, t)) {
-          const tt = await translateText(baseTitle, t, inputLang);
-          updates.title = setLang(updates.title, t, tt);
-        }
-        if (baseDesc && !getLang(updates.description, t)) {
-          const td = await translateText(baseDesc, t, inputLang);
-          updates.description = setLang(updates.description, t, td);
-        }
-      }
-
-      setDraft(updates);
-      alert("Episode translations filled (FR/DE/LB).");
-    } catch (e) {
-      alert(`Translate failed: ${e.message || e}`);
-    }
-  };
-
   return (
     <div className="p-2 rounded-lg bg-white border border-black/10">
       <div className="flex items-center justify-between">
         <div className="text-sm">
-          <span className="font-medium">
-            {(ep.number || 1)}. {getLang(ep.title, inputLang) || (typeof ep.title === "string" ? ep.title : "")}
-          </span>
-          {ep.description && (
-            <span className="text-zinc-600"> — {getLang(ep.description, inputLang) || (typeof ep.description === "string" ? ep.description : "")}</span>
-          )}
+          <span className="font-medium">{ep.number}. {ep.title}</span>
+          {ep.description && <span className="text-zinc-600"> — {ep.description}</span>}
         </div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={setOpen}><Pencil className="w-4 h-4 mr-1" /> Edit</Button>
@@ -501,28 +371,11 @@ function EpisodeRow({ ep, onEdit, onDelete, open, setOpen }) {
       {open && (
         <div className="mt-3 space-y-2">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
-            <Input
-              type="number"
-              min={1}
-              value={draft.number || 1}
-              onChange={(e) => setDraft({ ...draft, number: parseInt(e.target.value || "1") })}
-            />
-            <Input
-              placeholder={`Title (${inputLang.toUpperCase()})`}
-              value={getLang(draft.title, inputLang)}
-              onChange={(e) => setDraft({ ...draft, title: setLang(draft.title, inputLang, e.target.value) })}
-            />
-            <Input
-              placeholder="Video URL"
-              value={draft.videoUrl || ""}
-              onChange={(e) => setDraft({ ...draft, videoUrl: e.target.value })}
-            />
+            <Input type="number" min={1} value={draft.number || 1} onChange={(e) => setDraft({ ...draft, number: parseInt(e.target.value || "1") })} />
+            <Input placeholder="Title" value={draft.title || ""} onChange={(e) => setDraft({ ...draft, title: e.target.value })} />
+            <Input placeholder="Video URL" value={draft.videoUrl || ""} onChange={(e) => setDraft({ ...draft, videoUrl: e.target.value })} />
           </div>
-          <Input
-            placeholder={`Description (${inputLang.toUpperCase()})`}
-            value={getLang(draft.description, inputLang)}
-            onChange={(e) => setDraft({ ...draft, description: setLang(draft.description, inputLang, e.target.value) })}
-          />
+          <Input placeholder="Description" value={draft.description || ""} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
 
           {/* Audios edit */}
           <div>
@@ -549,7 +402,6 @@ function EpisodeRow({ ep, onEdit, onDelete, open, setOpen }) {
           </div>
 
           <div className="flex gap-2 pt-1">
-            <Button variant="outline" onClick={autoTranslateEpisode}>Auto-translate (FR/DE/LB)</Button>
             <Button onClick={save}>Save episode</Button>
             <Button variant="outline" onClick={() => setOpen(false)}>Close</Button>
           </div>
