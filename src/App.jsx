@@ -432,6 +432,10 @@ export default function App() {
         </div>
       </header>
 
+<Button variant="outline" className="ml-2" onClick={() => (window.location.href = "/admin")}>
+  Admin
+</Button>
+
       {/* Content */}
       <main className="max-w-6xl mx-auto px-4 py-6">
         {/* Hero / Featured Row */}
