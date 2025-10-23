@@ -389,7 +389,7 @@ export default function App() {
     <div className="min-h-screen bg-gradient-to-b from-sky-50 via-white to-rose-50 text-zinc-900">
       {/* 🎬 Intro video overlay (plays once, fades out) */}
       <IntroSplash
-        src="https://storage.googleapis.com/letzview-media/Logo%20Animation.mp4" // ← your video URL
+        src="https://storage.googleapis.com/letzview-media/Intro%20Video.mp4" // ← your video URL
         poster="/logo.png"
         showOnce={true}
         storageKey="intro_seen_v4"
