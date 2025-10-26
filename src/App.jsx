@@ -127,7 +127,7 @@ const MESSAGES = {
   fr: {
     appName: "LëtzView",
     search: "Rechercher",
-    series: "Séries",
+    series: "Nouveau sur Lëtzview",
     seasons: "Saisons",
     season: "Saison",
     episodes: "Épisodes",
@@ -172,7 +172,7 @@ const MESSAGES = {
   de: {
     appName: "LëtzView",
     search: "Suchen",
-    series: "Serien",
+    series: "Neu auf Lëtzview",
     seasons: "Staffeln",
     season: "Staffel",
     episodes: "Episoden",
@@ -217,7 +217,7 @@ const MESSAGES = {
   lb: {
     appName: "LëtzView",
     search: "Sichen",
-    series: "Serie(n)",
+    series: "Nei op Lëtzview",
     seasons: "Staffelen",
     season: "Staffel",
     episodes: "Episoden",
