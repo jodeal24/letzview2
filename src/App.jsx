@@ -82,7 +82,7 @@ const MESSAGES = {
   en: {
     appName: "LëtzView",
     search: "Search",
-    series: "Series",
+    series: "New on Lëtzview",
     seasons: "Seasons",
     season: "Season",
     episodes: "Episodes",
