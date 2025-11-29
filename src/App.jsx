@@ -134,7 +134,7 @@ const MESSAGES = {
     episodes: "Épisodes",
     play: "Lecture",
     audio: "Audio",
-    audioselect: "Sélectionner",
+    audioselect: "Choisir",
     subtitles: "Sous-titres",
     off: "Désactivé",
     admin: "Admin",
@@ -412,7 +412,7 @@ function HeroCarousel({ items = [], onClickItem }) {
 function Player({ episode, t, onClose }) {
   const videoRef = useRef(null);
   const audioRef = useRef(null);
-  const [audioSelection, setAudioSelection] = useState("video");
+  const [audioSelection, setAudioSelection] = useState("audioselect");
   const [subSelection, setSubSelection] = useState("off");
 
   useEffect(() => {
@@ -489,7 +489,7 @@ function Player({ episode, t, onClose }) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-white/10 border-white/10 text-zinc-800">
-                  <SelectItem value="audioselect">
+                  <SelectItem value="off">
                     {t.off} ({t.audio} in video)
                   </SelectItem>
                   {episode.audios?.map((a, idx) => (
@@ -509,7 +509,7 @@ function Player({ episode, t, onClose }) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-white/10 border-white/10 text-zinc-800">
-                  <SelectItem value="audioselect">{t.off}</SelectItem>
+                  <SelectItem value="off">{t.off}</SelectItem>
                   {episode.subtitles?.map((s, idx) => (
                     <SelectItem key={idx} value={s.lang}>
                       {s.lang}
