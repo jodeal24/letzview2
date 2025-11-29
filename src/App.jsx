@@ -133,7 +133,6 @@ const MESSAGES = {
     episodes: "Épisodes",
     play: "Lecture",
     audio: "Audio",
-    Off: "Désactivé",
     subtitles: "Sous-titres",
     off: "Désactivé",
     admin: "Admin",
@@ -179,7 +178,6 @@ const MESSAGES = {
     episodes: "Episoden",
     play: "Abspielen",
     audio: "Audio",
-    Off: "Aus",
     subtitles: "Untertitel",
     off: "Aus",
     admin: "Admin",
@@ -225,7 +223,6 @@ const MESSAGES = {
     episodes: "Episoden",
     play: "Ofspillen",
     audio: "Audio",
-    Off: "Aus",
     subtitles: "Ënnertitelen",
     off: "Aus",
     admin: "Admin",
@@ -487,7 +484,7 @@ function Player({ episode, t, onClose }) {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-white/10 border-white/10 text-zinc-800">
-                  <SelectItem value="Off">
+                  <SelectItem value="off">
                     {t.off} ({t.audio} in video)
                   </SelectItem>
                   {episode.audios?.map((a, idx) => (
