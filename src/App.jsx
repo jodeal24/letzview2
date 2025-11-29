@@ -480,10 +480,10 @@ function Player({ episode, t, onClose }) {
               <Headphones className="w-4 h-4" />
               <span className="text-sm w-24">{t.audio}</span>
               <Select value={audioSelection} onValueChange={setAudioSelection}>
-                <SelectTrigger className="bg-white/10 border-white/10">
+                <SelectTrigger className="bg-white/10 border-white/10 text-zinc-800">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-zinc-800 text-black border border-white/10">
+                <SelectContent className="bg-white/10 border-white/10 text-zinc-800">
                   <SelectItem value="off">
                     {t.off} ({t.audio} in video)
                   </SelectItem>
