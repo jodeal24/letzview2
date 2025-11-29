@@ -413,7 +413,7 @@ function Player({ episode, t, onClose }) {
   const videoRef = useRef(null);
   const audioRef = useRef(null);
   const [audioSelection, setAudioSelection] = useState("");
-  const [subSelection, setSubSelection] = useState("off");
+  const [subSelection, setSubSelection] = useState("");
 
   useEffect(() => {
     const v = videoRef.current;
@@ -484,7 +484,7 @@ function Player({ episode, t, onClose }) {
             <div className="flex items-center gap-2">
               <Headphones className="w-4 h-4" />
               <span className="text-sm w-24">{t.audio}</span>
-              <Select value={audioSelection} onValueChange={setAudioSelection}>
+              <Select value={audioSelection || undefined} onValueChange={setAudioSelection}>
                 <SelectTrigger className="bg-white/10 border-white/10 text-zinc-800">
                   <SelectValue placeholder={t.audioselect} />
                 </SelectTrigger>
