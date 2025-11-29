@@ -480,11 +480,11 @@ function Player({ episode, t, onClose }) {
               <Headphones className="w-4 h-4" />
               <span className="text-sm w-24">{t.audio}</span>
               <Select value={audioSelection} onValueChange={setAudioSelection}>
-                <SelectTrigger className="bg-white text-black border border-zinc-300">
+                <SelectTrigger className="bg-white/10 border-white/10">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-white text-black border border-zinc-300">
-                  <SelectItem value="video">
+                <SelectContent className="bg-zinc-800 text-black border border-white/10">
+                  <SelectItem value="off">
                     {t.off} ({t.audio} in video)
                   </SelectItem>
                   {episode.audios?.map((a, idx) => (
