@@ -25,13 +25,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import IntroSplash from "./IntroSplash";
 
-// 🔹 Admin route
+// 🔹 NEW: show the Firebase Admin page when path === "/admin"
 import Admin from "./Admin";
 
-// 🔹 Firestore data
+// 🔹 NEW: load data from Firestore
 import { fetchCatalog } from "./dataClient";
 
-// --- Shared storage helpers (legacy, still used by Admin panel) ---
+// --- (kept) Shared storage helpers; writes are admin-only in your UI anyway
 const STORAGE_KEY = "letzview_db_v1";
 
 async function loadDB() {
@@ -66,13 +66,15 @@ async function saveDBRemote(db) {
     throw new Error(msg);
   }
 
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(db));
-  } catch {}
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(db)); } catch {}
 }
 
 /**
  * LëtzView — Netflix/Disney-like front end
+ * - Series → Seasons → Episodes
+ * - Language switcher
+ * - Player with subtitles + multi-audio (external <audio> sync)
+ * - Admin-only upload (now moved to /admin with Firebase)
  */
 
 // ------------------------- i18n -------------------------
@@ -179,6 +181,7 @@ const MESSAGES = {
     play: "Abspielen",
     audio: "Audio",
     audioselect: "Auswählen",
+    Off: "Aus",
     subtitles: "Untertitel",
     off: "Aus",
     admin: "Admin",
@@ -281,17 +284,10 @@ const Section = ({ title, children, icon: Icon }) => (
 );
 
 const PosterCard = ({ item, onClick }) => (
-  <Card
-    className="bg-white/5 hover:bg-white/10 transition rounded-2xl overflow-hidden cursor-pointer"
-    onClick={onClick}
-  >
+  <Card className="bg-white/5 hover:bg-white/10 transition rounded-2xl overflow-hidden cursor-pointer" onClick={onClick}>
     <div
       className="aspect-[2/3] w-40 md:w-44 lg:w-48 bg-white/5"
-      style={{
-        backgroundImage: `url(${item.posterUrl || ""})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
+      style={{ backgroundImage: `url(${item.posterUrl || ""})`, backgroundSize: "cover", backgroundPosition: "center" }}
     />
     <CardContent className="p-3">
       <div className="text-sm font-medium line-clamp-2">{item.title}</div>
@@ -306,22 +302,10 @@ const Row = ({ title, items, onItem }) => {
       <div className="flex items-center justify-between mb-2">
         <h3 className="text-lg font-semibold">{title}</h3>
         <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() =>
-              scrollRef.current?.scrollBy({ left: -400, behavior: "smooth" })
-            }
-          >
+          <Button variant="ghost" size="icon" onClick={() => scrollRef.current?.scrollBy({ left: -400, behavior: "smooth" })}>
             <ChevronLeft />
           </Button>
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() =>
-              scrollRef.current?.scrollBy({ left: 400, behavior: "smooth" })
-            }
-          >
+          <Button variant="ghost" size="icon" onClick={() => scrollRef.current?.scrollBy({ left: 400, behavior: "smooth" })}>
             <ChevronRight />
           </Button>
         </div>
@@ -341,10 +325,7 @@ function HeroCarousel({ items = [], onClickItem }) {
 
   useEffect(() => {
     if (!items?.length || items.length < 2) return;
-    const id = setInterval(
-      () => setI((v) => (v + 1) % items.length),
-      4000
-    );
+    const id = setInterval(() => setI((v) => (v + 1) % items.length), 4000);
     return () => clearInterval(id);
   }, [items.length]);
 
@@ -365,7 +346,9 @@ function HeroCarousel({ items = [], onClickItem }) {
         animate={{ opacity: 1, scale: 1 }}
         transition={{ type: "spring", stiffness: 120, damping: 20 }}
         style={{
-          backgroundImage: current?.posterUrl ? `url(${current.posterUrl})` : "none",
+          backgroundImage: current?.posterUrl
+            ? `url(${current.posterUrl})`
+            : "none",
           backgroundSize: "cover",
           backgroundPosition: "center",
         }}
@@ -429,8 +412,8 @@ function HeroCarousel({ items = [], onClickItem }) {
 function Player({ episode, t, onClose }) {
   const videoRef = useRef(null);
   const audioRef = useRef(null);
-  const [audioSelection, setAudioSelection] = useState("");   // no default selection
-  const [subSelection, setSubSelection] = useState("off");    // subtitles default to "off"
+  const [audioSelection, setAudioSelection] = useState("");
+  const [subSelection, setSubSelection] = useState("");
 
   useEffect(() => {
     const v = videoRef.current;
@@ -443,23 +426,15 @@ function Player({ episode, t, onClose }) {
       if (!v.paused && a.paused) a.play().catch(() => {});
     };
 
-    const onPlay = () => {
-      if (audioSelection !== "video") a.play().catch(() => {});
-    };
-    const onPause = () => {
-      if (audioSelection !== "video") a.pause();
-    };
-    const onSeek = () => {
-      if (audioSelection !== "video") a.currentTime = v.currentTime;
-    };
+    const onPlay = () => { if (audioSelection !== "video") a.play().catch(() => {}); };
+    const onPause = () => { if (audioSelection !== "video") a.pause(); };
+    const onSeek = () => { if (audioSelection !== "video") a.currentTime = v.currentTime; };
 
     const int = setInterval(sync, 500);
     v.addEventListener("play", onPlay);
     v.addEventListener("pause", onPause);
     v.addEventListener("seeking", onSeek);
-    v.addEventListener("ratechange", () => {
-      if (audioSelection !== "video") a.playbackRate = v.playbackRate;
-    });
+    v.addEventListener("ratechange", () => { if (audioSelection !== "video") a.playbackRate = v.playbackRate; });
 
     return () => {
       clearInterval(int);
@@ -473,8 +448,7 @@ function Player({ episode, t, onClose }) {
     const v = videoRef.current;
     const a = audioRef.current;
     if (!v || !a) return;
-    if (audioSelection === "video" || audioSelection === "") {
-      // default: use video audio
+    if (audioSelection === "video") {
       v.muted = false;
       a.pause();
     } else {
@@ -489,40 +463,14 @@ function Player({ episode, t, onClose }) {
     <Dialog open onOpenChange={(open) => { if (!open) onClose?.(); }}>
       <DialogContent className="max-w-5xl p-0 overflow-hidden bg-black text-white">
         <div className="relative">
-          <video
-            ref={videoRef}
-            className="w-full bg-black"
-            controls
-            poster={episode.backdropUrl || episode.posterUrl}
-          >
+          <video ref={videoRef} className="w-full bg-black" controls poster={episode.backdropUrl || episode.posterUrl}>
             <source src={episode.videoUrl} />
-            {episode.subtitles
-              ?.filter((s) => s.lang === subSelection)
-              .map((s, idx) => (
-                <track
-                  key={idx}
-                  label={s.lang}
-                  kind="subtitles"
-                  srcLang={s.lang}
-                  src={s.url}
-                  default
-                />
-              ))}
+            {episode.subtitles?.filter((s) => s.lang === subSelection).map((s, idx) => (
+              <track key={idx} label={s.lang} kind="subtitles" srcLang={s.lang} src={s.url} default />
+            ))}
           </video>
-          <audio
-            ref={audioRef}
-            src={
-              audioSelection === "video" || audioSelection === ""
-                ? undefined
-                : episode.audios?.[parseInt(audioSelection)]?.url
-            }
-          />
-          <Button
-            variant="secondary"
-            size="icon"
-            className="absolute top-3 right-3 bg-white/10 hover:bg-white/20 border-white/20"
-            onClick={onClose}
-          >
+          <audio ref={audioRef} src={audioSelection === "video" ? undefined : episode.audios?.[parseInt(audioSelection)]?.url} />
+          <Button variant="secondary" size="icon" className="absolute top-3 right-3 bg-white/10 hover:bg-white/20 border-white/20" onClick={onClose}>
             <X />
           </Button>
         </div>
@@ -530,22 +478,18 @@ function Player({ episode, t, onClose }) {
         <div className="p-4 grid grid-cols-1 md:grid-cols-3 gap-4 bg-gradient-to-b from-black to-zinc-900">
           <div className="md:col-span-2">
             <h3 className="text-xl font-semibold mb-1">{episode.title}</h3>
-            {episode.description && (
-              <p className="text-sm text-white/80">{episode.description}</p>
-            )}
+            {episode.description && <p className="text-sm text-white/80">{episode.description}</p>}
           </div>
-
           <div className="flex flex-col gap-3">
-            {/* AUDIO SELECT */}
             <div className="flex items-center gap-2">
               <Headphones className="w-4 h-4" />
               <span className="text-sm w-24">{t.audio}</span>
-              <Select value={setAudioSelection} onValueChange={setAudioSelection}>
+              <Select value={audioSelection || undefined} onValueChange={setAudioSelection}>
                 <SelectTrigger className="bg-white/10 border-white/10 text-zinc-800">
                   <SelectValue placeholder={t.audioselect} />
                 </SelectTrigger>
                 <SelectContent className="bg-white/10 border-white/10 text-zinc-800">
-                  <SelectItem value="video">
+                  <SelectItem value="off">
                     {t.off} ({t.audio} in video)
                   </SelectItem>
                   {episode.audios?.map((a, idx) => (
@@ -557,7 +501,6 @@ function Player({ episode, t, onClose }) {
               </Select>
             </div>
 
-            {/* SUBTITLE SELECT */}
             <div className="flex items-center gap-2">
               <Captions className="w-4 h-4" />
               <span className="text-sm w-24">{t.subtitles}</span>
@@ -582,19 +525,15 @@ function Player({ episode, t, onClose }) {
   );
 }
 
-// ------------------------- Admin Panels -------------------------
+// ------------------------- Admin Panels (kept for public UI but gated by `admin`) -------------------------
 function AdminPanel({ db, setDB, t }) {
   const [openSeries, setOpenSeries] = useState(null);
 
   const addSeries = (s) => {
-    const next = {
-      ...db,
-      series: [...db.series, { ...s, id: uid(), seasons: [] }],
-    };
+    const next = { ...db, series: [...db.series, { ...s, id: uid(), seasons: [] }] };
     setDB(next);
     saveDBRemote(next).catch(console.error);
   };
-
   const addSeason = (seriesId, number) => {
     const next = { ...db };
     const s = next.series.find((x) => x.id === seriesId);
@@ -603,7 +542,6 @@ function AdminPanel({ db, setDB, t }) {
     setDB(next);
     saveDBRemote(next).catch(console.error);
   };
-
   const addEpisode = (seriesId, seasonId, ep) => {
     const next = { ...db };
     const s = next.series.find((x) => x.id === seriesId);
@@ -616,24 +554,14 @@ function AdminPanel({ db, setDB, t }) {
 
   return (
     <div className="space-y-6">
-      <Section title={t.addSeries} icon={Film}>
+      <Section title={`${t.addSeries}`} icon={Film}>
         <SeriesForm t={t} onSubmit={addSeries} />
       </Section>
 
       <Section title={`${t.addSeason} / ${t.addEpisode}`} icon={Video}>
         <div className="grid md:grid-cols-2 gap-6">
-          <SeasonForm
-            t={t}
-            db={db}
-            onSubmit={addSeason}
-            onOpenSeries={setOpenSeries}
-          />
-          <EpisodeForm
-            t={t}
-            db={db}
-            onSubmit={addEpisode}
-            openSeries={openSeries}
-          />
+          <SeasonForm t={t} db={db} onSubmit={addSeason} onOpenSeries={setOpenSeries} />
+          <EpisodeForm t={t} db={db} onSubmit={addEpisode} openSeries={openSeries} />
         </div>
       </Section>
     </div>
@@ -648,26 +576,10 @@ function SeriesForm({ t, onSubmit }) {
 
   return (
     <div className="grid gap-3 p-4 rounded-2xl bg-white/5">
-      <Input
-        placeholder={t.title}
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-      />
-      <Input
-        placeholder={t.description}
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-      />
-      <Input
-        placeholder={t.posterUrl}
-        value={posterUrl}
-        onChange={(e) => setPosterUrl(e.target.value)}
-      />
-      <Input
-        placeholder={t.backdropUrl}
-        value={backdropUrl}
-        onChange={(e) => setBackdropUrl(e.target.value)}
-      />
+      <Input placeholder={t.title} value={title} onChange={(e) => setTitle(e.target.value)} />
+      <Input placeholder={t.description} value={description} onChange={(e) => setDescription(e.target.value)} />
+      <Input placeholder={t.posterUrl} value={posterUrl} onChange={(e) => setPosterUrl(e.target.value)} />
+      <Input placeholder={t.backdropUrl} value={backdropUrl} onChange={(e) => setBackdropUrl(e.target.value)} />
       <Button
         onClick={() => {
           if (!title) return;
@@ -684,17 +596,17 @@ function SeriesForm({ t, onSubmit }) {
   );
 }
 
-// -------- SeasonForm --------
+// -------- SeasonForm (suggest next number + prevent duplicates) --------
 function SeasonForm({ t, db, onSubmit, onOpenSeries }) {
   const [seriesId, setSeriesId] = useState("");
   const [number, setNumber] = useState(1);
 
+  const series = db.series;
+
   useEffect(() => {
     const s = db.series.find((x) => x.id === seriesId);
     if (!s) return;
-    const max = s.seasons?.length
-      ? Math.max(...s.seasons.map((se) => Number(se.number) || 0))
-      : 0;
+    const max = s.seasons?.length ? Math.max(...s.seasons.map((se) => Number(se.number) || 0)) : 0;
     setNumber(max + 1);
   }, [seriesId, db.series]);
 
@@ -702,9 +614,7 @@ function SeasonForm({ t, db, onSubmit, onOpenSeries }) {
     if (!seriesId) return;
     const s = db.series.find((x) => x.id === seriesId);
     if (!s) return;
-    const exists = (s.seasons || []).some(
-      (se) => Number(se.number) === Number(number)
-    );
+    const exists = (s.seasons || []).some((se) => Number(se.number) === Number(number));
     if (exists) {
       alert(`${t.season} ${number} already exists for "${s.title}".`);
       return;
@@ -748,7 +658,7 @@ function SeasonForm({ t, db, onSubmit, onOpenSeries }) {
   );
 }
 
-// -------- EpisodeForm --------
+// -------- EpisodeForm (shows "Season N" labels; never UUIDs) --------
 function EpisodeForm({ t, db, onSubmit, openSeries }) {
   const [seriesId, setSeriesId] = useState("");
   const [seasonId, setSeasonId] = useState("");
@@ -770,10 +680,8 @@ function EpisodeForm({ t, db, onSubmit, openSeries }) {
   const currentSeason = seasons.find((se) => se.id === seasonId);
   const seasonLabel = currentSeason ? `${t.season} ${currentSeason.number}` : "";
 
-  const addAudio = () =>
-    setAudios((prev) => [...prev, { label: "", url: "" }]);
-  const addSub = () =>
-    setSubtitles((prev) => [...prev, { lang: "en", url: "" }]);
+  const addAudio = () => setAudios((prev) => [...prev, { label: "", url: "" }]);
+  const addSub = () => setSubtitles((prev) => [...prev, { lang: "en", url: "" }]);
 
   return (
     <div className="grid gap-3 p-4 rounded-2xl bg-white/5">
@@ -798,17 +706,9 @@ function EpisodeForm({ t, db, onSubmit, openSeries }) {
       </Select>
 
       {/* Season select (shows Season N) */}
-      <Select
-        value={seasonId}
-        onValueChange={setSeasonId}
-        disabled={!seriesId || seasons.length === 0}
-      >
+      <Select value={seasonId} onValueChange={setSeasonId} disabled={!seriesId || seasons.length === 0}>
         <SelectTrigger className="bg-white/10 border-white/10">
-          {seasonId ? (
-            <span>{seasonLabel}</span>
-          ) : (
-            <SelectValue placeholder={t.season} />
-          )}
+          {seasonId ? <span>{seasonLabel}</span> : <SelectValue placeholder={t.season} />}
         </SelectTrigger>
         <SelectContent className="bg-zinc-800 border-white/10">
           {seasons.map((se) => (
@@ -820,11 +720,7 @@ function EpisodeForm({ t, db, onSubmit, openSeries }) {
       </Select>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <Input
-          placeholder={t.title}
-          value={title}
-          onChange={(e) => setTitle(e.target.value)}
-        />
+        <Input placeholder={`${t.title}`} value={title} onChange={(e) => setTitle(e.target.value)} />
         <Input
           type="number"
           min={1}
@@ -833,16 +729,8 @@ function EpisodeForm({ t, db, onSubmit, openSeries }) {
           onChange={(e) => setNumber(parseInt(e.target.value || "1"))}
         />
       </div>
-      <Input
-        placeholder={t.description}
-        value={description}
-        onChange={(e) => setDescription(e.target.value)}
-      />
-      <Input
-        placeholder={t.videoUrl}
-        value={videoUrl}
-        onChange={(e) => setVideoUrl(e.target.value)}
-      />
+      <Input placeholder={t.description} value={description} onChange={(e) => setDescription(e.target.value)} />
+      <Input placeholder={t.videoUrl} value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} />
 
       <div className="bg-white/5 rounded-xl p-3">
         <div className="flex items-center gap-2 mb-2">
@@ -855,24 +743,12 @@ function EpisodeForm({ t, db, onSubmit, openSeries }) {
               <Input
                 placeholder={t.audioLabel}
                 value={a.label}
-                onChange={(e) =>
-                  setAudios((prev) =>
-                    prev.map((x, i) =>
-                      i === idx ? { ...x, label: e.target.value } : x
-                    )
-                  )
-                }
+                onChange={(e) => setAudios((prev) => prev.map((x, i) => (i === idx ? { ...x, label: e.target.value } : x)))}
               />
               <Input
                 placeholder={t.audioUrl}
                 value={a.url}
-                onChange={(e) =>
-                  setAudios((prev) =>
-                    prev.map((x, i) =>
-                      i === idx ? { ...x, url: e.target.value } : x
-                    )
-                  )
-                }
+                onChange={(e) => setAudios((prev) => prev.map((x, i) => (i === idx ? { ...x, url: e.target.value } : x)))}
               />
             </div>
           ))}
@@ -893,24 +769,12 @@ function EpisodeForm({ t, db, onSubmit, openSeries }) {
               <Input
                 placeholder={t.subtitleLang}
                 value={s.lang}
-                onChange={(e) =>
-                  setSubtitles((prev) =>
-                    prev.map((x, i) =>
-                      i === idx ? { ...x, lang: e.target.value } : x
-                    )
-                  )
-                }
+                onChange={(e) => setSubtitles((prev) => prev.map((x, i) => (i === idx ? { ...x, lang: e.target.value } : x)))}
               />
               <Input
                 placeholder={t.subtitleUrl}
                 value={s.url}
-                onChange={(e) =>
-                  setSubtitles((prev) =>
-                    prev.map((x, i) =>
-                      i === idx ? { ...x, url: e.target.value } : x
-                    )
-                  )
-                }
+                onChange={(e) => setSubtitles((prev) => prev.map((x, i) => (i === idx ? { ...x, url: e.target.value } : x)))}
               />
             </div>
           ))}
@@ -923,14 +787,7 @@ function EpisodeForm({ t, db, onSubmit, openSeries }) {
       <Button
         disabled={!seriesId || !seasonId || !title || !videoUrl}
         onClick={() => {
-          onSubmit(seriesId, seasonId, {
-            title,
-            number,
-            description,
-            videoUrl,
-            audios,
-            subtitles,
-          });
+          onSubmit(seriesId, seasonId, { title, number, description, videoUrl, audios, subtitles });
           setTitle("");
           setNumber(1);
           setDescription("");
@@ -948,22 +805,18 @@ function EpisodeForm({ t, db, onSubmit, openSeries }) {
 // ------------------------- Main App -------------------------
 export default function App() {
   // 🔹 Route switch: if URL path is /admin, render Admin page
-  const path =
-    typeof window !== "undefined" ? window.location.pathname : "/";
+  const path = typeof window !== "undefined" ? window.location.pathname : "/";
   if (path === "/admin") {
     return <Admin />;
   }
 
-  const [lang, setLang] = useState(
-    () => localStorage.getItem("sj_lang") || "en"
-  );
+  const [lang, setLang] = useState(() => localStorage.getItem("sj_lang") || "en");
   const t = MESSAGES[lang] || MESSAGES.en;
-
   useEffect(() => {
     localStorage.setItem("sj_lang", lang);
     document.title = t.appName || "LëtzView";
   }, [lang, t.appName]);
-
+  
   const [db, setDB] = useState({ series: [] });
 
   // 🔹 Load catalog from Firestore on first render
@@ -972,11 +825,9 @@ export default function App() {
       .then((series) => setDB({ series }))
       .catch(console.error);
   }, []);
-
+  
   const [query, setQuery] = useState("");
-  const [admin, setAdmin] = useState(
-    () => localStorage.getItem("sj_admin") === "1"
-  );
+  const [admin, setAdmin] = useState(() => localStorage.getItem("sj_admin") === "1");
   const [editingSeries, setEditingSeries] = useState(null);
 
   const [selectedSeries, setSelectedSeries] = useState(null);
@@ -992,14 +843,10 @@ export default function App() {
   const filteredSeries = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return db.series;
-    return db.series.filter(
-      (s) =>
-        s.title.toLowerCase().includes(q) ||
-        s.description?.toLowerCase().includes(q)
-    );
+    return db.series.filter((s) => s.title.toLowerCase().includes(q) || s.description?.toLowerCase().includes(q));
   }, [db, query]);
 
-  // 🔹 Log in: go to /admin
+  // 🔹 Log in: go to /admin (Firebase Auth is on that page)
   const login = () => {
     window.location.href = "/admin";
   };
@@ -1013,10 +860,7 @@ export default function App() {
   const deleteSeries = (seriesId) => {
     if (!admin) return;
     if (!confirm(t.confirmDeleteSeries)) return;
-    const next = {
-      ...db,
-      series: db.series.filter((s) => s.id !== seriesId),
-    };
+    const next = { ...db, series: db.series.filter((s) => s.id !== seriesId) };
     setDB(next);
     saveDBRemote(next).catch(console.error);
     if (selectedSeries?.id === seriesId) setSelectedSeries(null);
@@ -1042,44 +886,36 @@ export default function App() {
     const next = { ...db };
     const s = next.series.find((x) => x.id === seriesId);
     if (!s) return;
-    const max = s.seasons?.length
-      ? Math.max(...s.seasons.map((se) => Number(se.number) || 0))
-      : 0;
+    const max = s.seasons?.length ? Math.max(...s.seasons.map((se) => Number(se.number) || 0)) : 0;
     const newNumber = max + 1;
     if (!s.seasons) s.seasons = [];
     s.seasons.push({ id: uid(), number: newNumber, episodes: [] });
     setDB(next);
     saveDBRemote(next).catch(console.error);
     if (selectedSeries?.id === seriesId) setSelectedSeries({ ...s });
-    try {
-      alert(MESSAGES[lang].seasonAdded(newNumber));
-    } catch {}
+    try { alert(MESSAGES[lang].seasonAdded(newNumber)); } catch {}
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-sky-50 via-white to-rose-50 text-zinc-900">
-      {/* 🎬 INTRO VIDEO */}
-      <IntroSplash
-        src="https://storage.googleapis.com/letzview-media/Intro%20Video.mp4"
-        poster="/logo.png"
-        showOnce={true}
-        storageKey="intro_seen_v4"
-        fadeDurationMs={800}
-      />
 
+    {/* 🎬 INTRO VIDEO */}
+    <IntroSplash
+  src="https://storage.googleapis.com/letzview-media/Intro%20Video.mp4"  // your video URL
+  poster="/logo.png"
+  showOnce={true}
+  storageKey="intro_seen_v4"     // bump version to test again
+  fadeDurationMs={800}           // controls fade-out speed
+/>
+
+      
       {/* Header */}
       <header className="sticky top-0 z-20 backdrop-blur bg-white/60 border-b border-black/5">
         <div className="max-w-6xl mx-auto px-4 py-3 flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <img
-              src="/logo.png"
-              alt="LëtzView logo"
-              className="w-20 h-20 rounded-2xl object-contain"
-            />
+            <img src="/logo.png" alt="LëtzView logo" className="w-20 h-20 rounded-2xl object-contain" />
             <div>
-              <div className="text-xl font-bold tracking-tight">
-                {t.appName}
-              </div>
+              <div className="text-xl font-bold tracking-tight">{t.appName}</div>
               <div className="text-xs text-zinc-600">{t.familyTagline}</div>
             </div>
           </div>
@@ -1088,12 +924,7 @@ export default function App() {
 
           <div className="hidden md:flex items-center gap-2 mr-2">
             <div className="relative w-64">
-              <Input
-                className="pl-8"
-                placeholder={t.search + "…"}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-              />
+              <Input className="pl-8" placeholder={t.search + "…"} value={query} onChange={(e) => setQuery(e.target.value)} />
               <Search className="w-4 h-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-zinc-500" />
             </div>
           </div>
@@ -1131,12 +962,9 @@ export default function App() {
         <div className="rounded-3xl p-6 bg-gradient-to-br from-indigo-100 via-sky-100 to-emerald-100 border border-black/5 shadow-sm">
           <div className="grid md:grid-cols-2 gap-6 items-center">
             <div>
-              <h1 className="text-2xl md:text-3xl font-bold mb-2">
-                {t.series}
-              </h1>
-              <p className="text-zinc-700 mb-4">
-                {db.series.length ? "" : t.libraryEmpty}
-              </p>
+              <h1 className="text-2xl md:text-3xl font-bold mb-2">{t.series}</h1>
+              <p className="text-zinc-700 mb-4">{db.series.length ? "" : t.libraryEmpty}</p>
+              {/* Dialog for adding series kept, but only useful if admin is enabled (not on public site) */}
               {admin && (
                 <Dialog>
                   <DialogTrigger asChild>
@@ -1151,13 +979,7 @@ export default function App() {
                     <SeriesForm
                       t={t}
                       onSubmit={(s) => {
-                        const next = {
-                          ...db,
-                          series: [
-                            ...db.series,
-                            { ...s, id: uid(), seasons: [] },
-                          ],
-                        };
+                        const next = { ...db, series: [...db.series, { ...s, id: uid(), seasons: [] }] };
                         setDB(next);
                         saveDBRemote(next).catch(console.error);
                       }}
@@ -1167,10 +989,7 @@ export default function App() {
               )}
             </div>
             <div className="block">
-              <HeroCarousel
-                items={db.series}
-                onClickItem={setSelectedSeries}
-              />
+              <HeroCarousel items={db.series} onClickItem={setSelectedSeries} />
             </div>
           </div>
         </div>
@@ -1180,59 +999,37 @@ export default function App() {
 
         {/* Edit Series Dialog */}
         {editingSeries && (
-          <Dialog
-            open
-            onOpenChange={(open) => {
-              if (!open) setEditingSeries(null);
-            }}
-          >
+          <Dialog open onOpenChange={(open) => { if (!open) setEditingSeries(null); }}>
             <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>{t.editSeries}</DialogTitle>
               </DialogHeader>
 
               <div className="grid gap-3 p-4 rounded-2xl bg-white/5">
-                <Input
-                  placeholder={t.title}
-                  defaultValue={editingSeries.title}
-                  onChange={(e) =>
-                    (editingSeries.title = e.target.value)
-                  }
-                />
+                <Input placeholder={t.title} defaultValue={editingSeries.title} onChange={(e) => (editingSeries.title = e.target.value)} />
                 <Input
                   placeholder={t.description}
                   defaultValue={editingSeries.description}
-                  onChange={(e) =>
-                    (editingSeries.description = e.target.value)
-                  }
+                  onChange={(e) => (editingSeries.description = e.target.value)}
                 />
                 <Input
                   placeholder={t.posterUrl}
                   defaultValue={editingSeries.posterUrl}
-                  onChange={(e) =>
-                    (editingSeries.posterUrl = e.target.value)
-                  }
+                  onChange={(e) => (editingSeries.posterUrl = e.target.value)}
                 />
                 <Input
                   placeholder={t.backdropUrl}
                   defaultValue={editingSeries.backdropUrl}
-                  onChange={(e) =>
-                    (editingSeries.backdropUrl = e.target.value)
-                  }
+                  onChange={(e) => (editingSeries.backdropUrl = e.target.value)}
                 />
 
                 <div className="flex gap-2">
                   <Button
                     onClick={() => {
                       const next = { ...db };
-                      const idx = next.series.findIndex(
-                        (x) => x.id === editingSeries.id
-                      );
+                      const idx = next.series.findIndex((x) => x.id === editingSeries.id);
                       if (idx !== -1) {
-                        next.series[idx] = {
-                          ...next.series[idx],
-                          ...editingSeries,
-                        };
+                        next.series[idx] = { ...next.series[idx], ...editingSeries };
                         setDB(next);
                         saveDBRemote(next).catch(console.error);
                       }
@@ -1241,10 +1038,7 @@ export default function App() {
                   >
                     {t.save}
                   </Button>
-                  <Button
-                    variant="outline"
-                    onClick={() => setEditingSeries(null)}
-                  >
+                  <Button variant="outline" onClick={() => setEditingSeries(null)}>
                     {t.cancel}
                   </Button>
                 </div>
@@ -1253,7 +1047,7 @@ export default function App() {
           </Dialog>
         )}
 
-        {/* Admin Section */}
+        {/* Admin Section (kept but hidden for normal viewers) */}
         {admin && (
           <section className="mt-10">
             <div className="flex items-center gap-2 mb-4">
@@ -1275,12 +1069,7 @@ export default function App() {
       {/* Series Drawer */}
       <AnimatePresence>
         {selectedSeries && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 z-30 flex"
-          >
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-black/50 z-30 flex">
             <motion.aside
               initial={{ x: 40, opacity: 0 }}
               animate={{ x: 0, opacity: 1 }}
@@ -1292,48 +1081,29 @@ export default function App() {
                 {selectedSeries.backdropUrl ? (
                   <div
                     className="h-48 md:h-64 w-full"
-                    style={{
-                      backgroundImage: `url(${selectedSeries.backdropUrl})`,
-                      backgroundSize: "cover",
-                      backgroundPosition: "center",
-                    }}
+                    style={{ backgroundImage: `url(${selectedSeries.backdropUrl})`, backgroundSize: "cover", backgroundPosition: "center" }}
                   />
                 ) : (
                   <div className="h-48 md:h-64 w-full bg-gradient-to-br from-indigo-100 to-sky-100" />
                 )}
-                <Button
-                  variant="secondary"
-                  size="icon"
-                  className="absolute top-3 right-3"
-                  onClick={() => setSelectedSeries(null)}
-                >
+                <Button variant="secondary" size="icon" className="absolute top-3 right-3" onClick={() => setSelectedSeries(null)}>
                   <X />
                 </Button>
               </div>
-
               <div className="p-5">
                 <div className="flex gap-4">
                   <div
                     className="w-28 flex-shrink-0 rounded-xl overflow-hidden"
-                    style={{
-                      backgroundImage: `url(${selectedSeries.posterUrl})`,
-                      backgroundSize: "cover",
-                      backgroundPosition: "center",
-                    }}
+                    style={{ backgroundImage: `url(${selectedSeries.posterUrl})`, backgroundSize: "cover", backgroundPosition: "center" }}
                   >
                     <div className="aspect-[2/3]" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="text-2xl font-bold mb-1">
-                      {selectedSeries.title}
-                    </h3>
+                    <h3 className="text-2xl font-bold mb-1">{selectedSeries.title}</h3>
 
                     {admin && (
                       <div className="mt-2 flex flex-wrap gap-2">
-                        <Button
-                          variant="outline"
-                          onClick={() => setEditingSeries(selectedSeries)}
-                        >
+                        <Button variant="outline" onClick={() => setEditingSeries(selectedSeries)}>
                           {t.editSeries}
                         </Button>
                         <Button
@@ -1355,78 +1125,65 @@ export default function App() {
                       </div>
                     )}
 
-                    {selectedSeries.description && (
-                      <p className="text-zinc-700 mb-3">
-                        {selectedSeries.description}
-                      </p>
-                    )}
+                    {selectedSeries.description && <p className="text-zinc-700 mb-3">{selectedSeries.description}</p>}
                     <div className="space-y-5">
-                      {selectedSeries.seasons
-                        ?.sort((a, b) => a.number - b.number)
-                        .map((season) => (
-                          <div key={season.id}>
-                            <div className="font-semibold mb-2">
-                              {t.season} {season.number}
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                              {season.episodes
-                                ?.sort((a, b) => a.number - b.number)
-                                .map((ep) => (
-                                  <Card
-                                    key={ep.id}
-                                    className="bg-white/60 hover:bg-white/80 transition cursor-pointer"
-                                    onClick={() => setSelectedEpisode(ep)}
-                                  >
-                                    <CardContent className="p-4">
-                                      <div className="flex items-start gap-3">
-                                        <div className="w-16 h-10 rounded bg-gradient-to-br from-indigo-200 to-sky-200" />
-                                        <div className="flex-1">
-                                          <div className="font-medium">
-                                            {ep.number}. {ep.title}
-                                          </div>
-                                          {ep.description && (
-                                            <div className="text-sm text-zinc-600 line-clamp-2">
-                                              {ep.description}
-                                            </div>
-                                          )}
-                                        </div>
-
-                                        <div className="flex items-center gap-1">
-                                          <Button
-                                            size="icon"
-                                            variant="ghost"
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              setSelectedEpisode(ep);
-                                            }}
-                                            title={t.play}
-                                          >
-                                            <Play />
-                                          </Button>
-                                          {admin && (
-                                            <Button
-                                              size="icon"
-                                              variant="outline"
-                                              className="border-red-200 text-red-600 hover:bg-red-50"
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                alert(
-                                                  "Delete episodes in the Admin page."
-                                                );
-                                              }}
-                                              title={t.deleteEpisode}
-                                            >
-                                              <Trash />
-                                            </Button>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </CardContent>
-                                  </Card>
-                                ))}
-                            </div>
+                      {selectedSeries.seasons?.sort((a, b) => a.number - b.number).map((season) => (
+                        <div key={season.id}>
+                          <div className="font-semibold mb-2">
+                            {t.season} {season.number}
                           </div>
-                        ))}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                            {season.episodes?.sort((a, b) => a.number - b.number).map((ep) => (
+                              <Card
+                                key={ep.id}
+                                className="bg-white/60 hover:bg-white/80 transition cursor-pointer"
+                                onClick={() => setSelectedEpisode(ep)}
+                              >
+                                <CardContent className="p-4">
+                                  <div className="flex items-start gap-3">
+                                    <div className="w-16 h-10 rounded bg-gradient-to-br from-indigo-200 to-sky-200" />
+                                    <div className="flex-1">
+                                      <div className="font-medium">
+                                        {ep.number}. {ep.title}
+                                      </div>
+                                      {ep.description && <div className="text-sm text-zinc-600 line-clamp-2">{ep.description}</div>}
+                                    </div>
+
+                                    <div className="flex items-center gap-1">
+                                      <Button
+                                        size="icon"
+                                        variant="ghost"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          setSelectedEpisode(ep);
+                                        }}
+                                        title={t.play}
+                                      >
+                                        <Play />
+                                      </Button>
+                                      {admin && (
+                                        <Button
+                                          size="icon"
+                                          variant="outline"
+                                          className="border-red-200 text-red-600 hover:bg-red-50"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            // kept for legacy; real deletes should be done in /admin
+                                            alert("Delete episodes in the Admin page.");
+                                          }}
+                                          title={t.deleteEpisode}
+                                        >
+                                          <Trash />
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -1437,20 +1194,13 @@ export default function App() {
       </AnimatePresence>
 
       {/* Player Modal */}
-      {selectedEpisode && (
-        <Player
-          episode={selectedEpisode}
-          t={t}
-          onClose={() => setSelectedEpisode(null)}
-        />
-      )}
+      {selectedEpisode && <Player episode={selectedEpisode} t={t} onClose={() => setSelectedEpisode(null)} />}
 
       <footer className="border-t border-black/5 mt-16">
         <div className="max-w-6xl mx-auto px-4 py-8 text-sm text-zinc-600 flex items-center justify-between">
           <div>© {new Date().getFullYear()} LëtzView</div>
           <div className="flex items-center gap-2">
-            <Globe className="w-4 h-4" /> {t.interfaceLanguage}:{" "}
-            {lang.toUpperCase()}
+            <Globe className="w-4 h-4" /> {t.interfaceLanguage}: {lang.toUpperCase()}
           </div>
         </div>
       </footer>
